@@ -12,6 +12,10 @@ import { AddLogs } from './screens/AddLogs';
 import { LogsNeeded } from './screens/LogsNeeded';
 import { LogsCut } from './screens/LogsCut';
 import { TreesCut } from './screens/TreesCut';
+import { Reports } from './screens/Reports';
+import { Settings } from './screens/Settings';
+import { Sync } from './screens/Sync';
+import { WallPlan } from './screens/WallPlan';
 
 function App() {
   const route = useRoute();
@@ -23,6 +27,10 @@ function App() {
     case 'needed': return <LogsNeeded />;
     case 'cut': return <LogsCut treeFilter={query.get('tree')} />;
     case 'trees': return <TreesCut />;
+    case 'reports': return <Reports />;
+    case 'settings': return <Settings />;
+    case 'sync': return <Sync />;
+    case 'wall': return <WallPlan />;
     default: return <Main />;
   }
 }
