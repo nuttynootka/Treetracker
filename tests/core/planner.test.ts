@@ -68,7 +68,7 @@ function bruteBest(p: Profile, rows: PlannerRow[]): number {
       if (used[i] >= r.remaining) return;
       const end = pos + 12 * r.lengthFt;
       if (end > 12 * p.lengthFt + 1e-9 || circAt(p, end / 12) < r.minCirc - 1e-9) return;
-      const w = rowWeight(r, r.remaining - used[i]);
+      const w = rowWeight(r);
       used[i]++;
       best = Math.max(best, w + go(end + S.kerfIn));
       used[i]--;
@@ -77,6 +77,16 @@ function bruteBest(p: Profile, rows: PlannerRow[]): number {
   };
   return go(S.buttTrimIn);
 }
+
+describe('planTree on a trunk whose readings go up', () => {
+  it('only plans logs that the real trunk supports', () => {
+    const p = buildProfile(30, 34, [30, 33, 26, 18], 12.6);
+    const plan = planTree(p, [row(12, 28.3, 2), row(8, 25.2, 2), row(6, 18.9, 3)], S);
+    expect(plan.cuts.length).toBeGreaterThan(0);
+    const mins: Record<string, number> = { '12|28.3': 28.3, '8|25.2': 25.2, '6|18.9': 18.9 };
+    for (const c of plan.cuts) expect(circAt(p, c.endIn / 12)).toBeGreaterThanOrEqual(mins[c.rowKey]);
+  });
+});
 
 describe('planTree is optimal', () => {
   it('matches exhaustive search on 200 random small cases', () => {
@@ -89,6 +99,7 @@ describe('planTree is optimal', () => {
       const readings = [6, 12, 18, 24, 30].filter((x) => x < lengthFt).map(() => (c = Math.max(12.6, c - rand() * 6)));
       const p = buildProfile(lengthFt, 25 + rand() * 25 > c ? c + rand() * 8 : c, readings, 12.6);
       p.points[0].circ = Math.max(p.points[0].circ, p.points[1]?.circ ?? 12.6);
+      for (let i = 1; i < p.points.length; i++) p.points[i].circ = Math.min(p.points[i].circ, p.points[i - 1].circ);
       const nRows = 1 + Math.floor(rand() * 4);
       const rows: PlannerRow[] = [];
       for (let i = 0; i < nRows; i++) {
@@ -97,11 +108,7 @@ describe('planTree is optimal', () => {
       }
       const plan = planTree(p, rows, S);
       if (plan.cuts.length > 1) withCuts++;
-      const value = plan.cuts.reduce((s, cut, i) => {
-        const r = rows.find((x) => x.key === cut.rowKey)!;
-        const before = plan.cuts.slice(0, i).filter((x) => x.rowKey === cut.rowKey).length;
-        return s + rowWeight(r, r.remaining - before);
-      }, 0);
+      const value = plan.cuts.reduce((s, cut) => s + rowWeight(rows.find((x) => x.key === cut.rowKey)!), 0);
       expect(value).toBeCloseTo(bruteBest(p, rows), 9);
     }
     expect(withCuts).toBeGreaterThan(50); // the cases must exercise real multi-piece choices

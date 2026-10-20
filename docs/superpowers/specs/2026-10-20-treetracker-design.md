@@ -105,8 +105,8 @@ A log fills a row if it is at least as long and at least as large around at the 
 
 - Pieces are the need rows with remaining quantity > 0. A piece of N ft is cut exactly N ft long.
 - Cutting starts after the butt trim, from the butt up, with one kerf between pieces. A piece starting at s (inches from the butt) is feasible if c(s + 12N) ≥ its minimum circumference and s + 12N ≤ the tree length.
-- With a non-increasing profile, cutting pieces back to back is never worse than leaving gaps, so the search chooses only the sequence of pieces. An exact depth-first search with branch-and-bound and memoisation over (position, remaining counts) finds the best plan. If the owner overrode an increasing-reading warning, the same search is still used. It stays correct because each piece is checked against the actual profile.
-- Objective: maximise the total weight of pieces that fill still-needed rows, never more than a row's remaining quantity. Weight = length in ft × (min circumference ÷ 12.6) × scarcity, where scarcity = 1 + (remaining ÷ original quantity). This is a starting formula to be tuned against the benchmark. Tie-break: least waste (unused trunk length).
+- Search (as built): on a trunk that never gets thicker going up, any feasible set of pieces stays feasible when the pieces needing the largest circumference are cut lowest, and pieces are cut back to back. So the planner decides, class by class from the largest minimum circumference down, how many pieces of each length to take, with dynamic programming over (class, total feet, number of pieces). It is exact and is checked against exhaustive search. If the owner overrode an increasing-reading warning, the planner uses a conservative outline of the trunk that is never thicker than any point below it, so no planned log is thinner than its row needs.
+- Objective: maximise the total weight of pieces that fill still-needed rows, never more than a row's remaining quantity. Weight per piece = length in ft × (min circumference ÷ 12.6) × (1 + remaining ÷ quantity), where remaining is the row's count when the tree is planned. Tie-break: least waste (more inches cut into pieces).
 - Output: ordered cuts with start and end positions from the butt, length, expected small-end circumference, the row each fills, and what is left at the top (length and circumference).
 - On Submit, each planned piece becomes a LogCut (source tree) whose small-end circumference is the expected value from the profile. The owner can edit any of them.
 
@@ -126,7 +126,8 @@ A log fills a row if it is at least as long and at least as large around at the 
 **Benchmark gate (stage 3).** With the starting list, the 0.59 in/ft taper, perfect cutting, and the limit expressed at the butt cut face:
 
 - Limit 39.6 in at the cut face → about 40 trees (about 17 at 39.6 and about 23 at 36.5).
-- Limit 37.7 in at the cut face → about 45 trees (about 28 at 37.7 and about 17 at 34.6).
+- Limit 37.7 in at the cut face → about 45 trees (about 28 at 37.7 and about 17 at 34.6). As built: at exactly 37.7 in the 16 ft logs needing 28.3 in cannot be cut (their small end measures 28.16 in after the 2 in butt trim; 28.26 in even with no trim), so the test uses 37.85 in, the smallest cut face where they can be cut.
+- Results as built: 39.6 → 41 trees; 39.47 → 45; 37.85 → 46; 37.7, 34.6, and 39.6 with 0.79 in/ft → cannot be finished.
 
 The estimator is run in this configuration (prior only, candidates by butt circumference) as a test. If it lands well away from these numbers, it is investigated before building further. Also tested: the count is impossible at a 34.6 in cut-face limit or a 0.79 in/ft taper. Note: 37.7 in at waist plus 3 × 0.59 is 39.47 in at the cut face, not 39.6, so the test runs at both values.
 
