@@ -1,5 +1,6 @@
 import { matchLogs, remainingPlannerRows } from './matching';
 import { recommend } from './recommend';
+import { usableTrees } from './predict';
 import type { Recommendation } from './recommend';
 import { courseHeight, generateRows, stackHeight } from './wall';
 import type { GeneratedRow } from './wall';
@@ -17,7 +18,7 @@ const describeKey = (key: string) => {
 
 /** Signals that the trees cannot supply the current plan. `rec` must be computed with the largest waist actually entered. */
 export function detectShortfall(rec: Recommendation | null, trees: Tree[], s: SettingsValues): ShortfallSignal[] {
-  const live = trees.filter((t) => !t.deleted);
+  const live = usableTrees(trees);
   if (!live.length) return [];
   const out: ShortfallSignal[] = [];
   if (rec && rec.unfillable.length) {
@@ -85,6 +86,12 @@ export function candidatePlans(side: 'exterior' | 'interior', allowed: number[],
       return;
     }
     const h = courseHeight(classes[i], w);
+    if (!(h > 0)) {
+      // A class with no height cannot be stacked; skip it rather than loop forever.
+      counts[i] = 0;
+      visit(i + 1, height);
+      return;
+    }
     for (let n = 0; height + n * h <= hi; n++) {
       counts[i] = n;
       visit(i + 1, height + n * h);

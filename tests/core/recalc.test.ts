@@ -26,6 +26,10 @@ describe('candidatePlans', () => {
     for (const c of candidatePlans('interior', [28.3, 25.2, 18.9, 15.8, 12.6], v1(), 50))
       expect(Math.max(...c.courses)).toBeLessThanOrEqual(18.9);
   });
+  it('finishes when a course height is set to 0', () => {
+    const plan = { ...v1(), wall: { ...v1().wall, courseHeightIn: { '25.2': 0 } } };
+    expect(Array.isArray(candidatePlans('exterior', [25.2], plan))).toBe(true);
+  });
   it('rejects 10 courses of 25.2 in because they stack below 82 in', () => {
     expect(candidatePlans('exterior', [25.2], v1()).some((c) => c.courses.length === 10)).toBe(false);
   });

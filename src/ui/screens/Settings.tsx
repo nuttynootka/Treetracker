@@ -5,6 +5,18 @@ import { useApp } from '../../store/app-state';
 import { getDevice, setDeviceName } from '../../store/local';
 import { Button, NumberField, Screen } from '../components';
 
+// Settings that must be above 0, or the tree model has no size or no taper.
+const POSITIVE = new Set<keyof SettingsValues>(['waistHeightFt', 'maxWaistCirc', 'topCirc', 'priorTaperPerFt']);
+const FRACTION = new Set<keyof SettingsValues>(['shortfallYieldRatio', 'spareFraction']);
+
+function problem(k: keyof SettingsValues, v: number | null): string | null {
+  if (v === null) return 'Enter a number.';
+  if (v < 0) return 'Must not be negative.';
+  if (POSITIVE.has(k) && v === 0) return 'Must be more than 0.';
+  if (FRACTION.has(k) && v > 1) return 'Must be between 0 and 1.';
+  return null;
+}
+
 const FIELDS: [keyof SettingsValues, string][] = [
   ['kerfIn', 'Saw kerf (in)'],
   ['buttTrimIn', 'Butt trim (in)'],
@@ -26,7 +38,7 @@ export function Settings() {
   const [name, setName] = useState(getDevice().name);
   const [msg, setMsg] = useState('');
   const parsed = FIELDS.map(([k]) => [k, parseNumber(vals[k] ?? '')] as const);
-  const ok = parsed.every(([, v]) => v !== null && v >= 0);
+  const ok = parsed.every(([k, v]) => problem(k, v) === null);
   return (
     <Screen title="Settings">
       <form class="card raised-lg" onSubmit={async (e) => {
@@ -43,7 +55,7 @@ export function Settings() {
         {FIELDS.map(([k, label]) => (
           <NumberField key={k} id={`set-${k}`} label={label} value={vals[k] ?? ''}
             onInput={(v) => setVals((x) => ({ ...x, [k]: v }))}
-            error={parseNumber(vals[k] ?? '') === null ? 'Enter a number.' : null} />
+            error={problem(k, parseNumber(vals[k] ?? ''))} />
         ))}
         <Button type="submit" variant="primary" wide disabled={!ok}>Save settings</Button>
         {msg && <p class="label" role="status">{msg}</p>}

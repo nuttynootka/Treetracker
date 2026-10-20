@@ -3,6 +3,7 @@ import type { Profile, SettingsValues } from './types';
 /** Every multiple of 6 ft strictly below the tree length: where the form asks for a circumference. */
 export function readingStations(lengthFt: number): number[] {
   const out: number[] = [];
+  if (!Number.isFinite(lengthFt)) return out;
   for (let x = 6; x < lengthFt; x += 6) out.push(x);
   return out;
 }

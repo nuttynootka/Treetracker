@@ -3,25 +3,33 @@ import type { Profile, ProfilePoint, SettingsValues, Tree } from './types';
 
 const PRIOR_TREES = 5; // the starting assumption counts as this many trees and fades out as trees are measured
 const KERNEL_SIGMA_IN = 3; // trees within about 3 in of waist circumference count most
+const MIN_TAPER = 0.05; // guards a 0 or negative taper setting, which would make the tree endless
+const CAP_AFTER_TREES = 3; // the learned length cap needs this many usable trees
+
+/** Trees that can teach the model: not deleted, and long enough to have at least one reading above the butt. */
+export function usableTrees(trees: Tree[]): Tree[] {
+  return trees.filter((t) => !t.deleted && t.waistCirc > 0 && t.lengthFt >= 6);
+}
 
 /** Straight taper from the waist estimate, running until the top circumference. */
 export function priorProfile(waist: number, s: SettingsValues): Profile {
-  const butt = waist + (s.waistHeightFt - s.stumpHeightFt) * s.priorTaperPerFt;
-  const lengthFt = Math.max(0, (butt - s.topCirc) / s.priorTaperPerFt);
+  const taper = Math.max(s.priorTaperPerFt, MIN_TAPER);
+  const butt = waist + (s.waistHeightFt - s.stumpHeightFt) * taper;
+  const lengthFt = Math.max(0, (butt - s.topCirc) / taper);
   const points: ProfilePoint[] = [{ xFt: 0, circ: butt }];
-  for (const x of readingStations(lengthFt)) points.push({ xFt: x, circ: butt - s.priorTaperPerFt * x });
+  for (const x of readingStations(lengthFt)) points.push({ xFt: x, circ: butt - taper * x });
   points.push({ xFt: lengthFt, circ: s.topCirc });
   return { points, lengthFt };
 }
 
 export function learnedMaxLengthFt(trees: Tree[]): number | null {
-  const live = trees.filter((t) => !t.deleted);
-  return live.length ? 1.1 * Math.max(...live.map((t) => t.lengthFt)) : null;
+  const live = usableTrees(trees);
+  return live.length >= CAP_AFTER_TREES ? 1.1 * Math.max(...live.map((t) => t.lengthFt)) : null;
 }
 
 /** Predicted profile for a tree of this waist circumference: the prior blended toward measured trees of similar size. */
 export function predictProfile(waist: number, trees: Tree[], s: SettingsValues): Profile {
-  const measured = trees.filter((t) => !t.deleted && t.waistCirc > 0);
+  const measured = usableTrees(trees);
   const prior = priorProfile(waist, s);
   if (measured.length === 0) return prior;
 

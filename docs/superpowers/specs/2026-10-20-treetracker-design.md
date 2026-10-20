@@ -120,7 +120,8 @@ A log fills a row if it is at least as long and at least as large around at the 
   - Prior: linear taper of 0.59 in/ft from the waist circumference (so the butt is waist + 3 × 0.59), with length running until circumference reaches 12.6 in. No length cap.
   - Measured trees (source tree only, not deleted): for each tree, ratios of c(x) ÷ waist at 0, 6, 12 … ft, and length ÷ waist.
   - Blend: for each candidate, weight each measured tree by its closeness in waist size (Gaussian kernel, σ = 3 in). The prior counts as 5 trees' worth of weight that fades linearly to zero as 5 trees are measured. The predicted profile is the weighted average of ratios × candidate waist. The predicted length is the weighted average of length ÷ waist × candidate waist.
-  - Learned length cap: once trees are measured, the predicted length never exceeds 110% of the longest tree entered so far.
+  - Learned length cap: once 3 usable trees are measured, the predicted length never exceeds 110% of the longest tree entered so far.
+  - As built: only trees at least 6 ft long (with at least one reading above the butt) count toward the averages, the length cap and the shortfall checks. Shorter pieces are still saved and planned. A taper setting of 0 or less is treated as 0.05 in/ft.
 - Prediction error: on Submit, the model's prediction for the new tree's waist size (made before adding it) is stored. Trees cut and Reports show predicted versus actual circumference at each reading and length, and the average error.
 
 **Benchmark gate (stage 3).** With the starting list, the 0.59 in/ft taper, perfect cutting, and the limit expressed at the butt cut face:
@@ -150,7 +151,7 @@ The estimator is run in this configuration (prior only, candidates by butt circu
   - (c) The owner taps Check supply.
 - Thresholds (60%, 3 trees) are editable in Settings.
 - Supplyable classes: start from classes with logs already cut or that the estimator can fill. The owner can edit the list.
-- Candidate plans (separately for exterior and interior): every non-increasing sequence of allowed classes whose total height is within the tolerance. Ranked by fewest extra pieces, then fewest total linear feet. Show the top 3.
+- Candidate plans (separately for exterior and interior): every non-increasing sequence of allowed classes whose total height is within the tolerance. As built, a side never moves to logs larger around than its largest current course (the point is a shortage, so interior walls never take the big exterior logs). Ranked by fewest pieces, then fewest total linear feet, then fewest different sizes, then closest to the target height. Show the top 3. The owner can still type any course list by hand with Edit.
 - Each candidate shows: courses bottom to top, total height and difference from the target, rows and quantities, change in total pieces and linear feet, change in trees still needed, and how many cut logs still count.
 - Accept stores a new PlanVersion, makes it active, and regenerates need rows (old rows are tombstoned, not destroyed; old versions are kept). Undo makes the previous version active again and regenerates its rows. Edit lets the owner change the course list by hand and regenerate. Dismiss changes nothing.
 - A recalculation never deletes a cut log and never changes tree averages.

@@ -29,7 +29,8 @@ export interface AppState {
   shortfall: ShortfallSignal[];
   busy: boolean;
   actions: Actions;
-  run(fn: (records: AnyRecord[], derived: Derived) => AnyRecord[]): Promise<void>;
+  /** Saves the change; resolves false (and shows an alert) if it could not be saved. */
+  run(fn: (records: AnyRecord[], derived: Derived) => AnyRecord[]): Promise<boolean>;
   importText(text: string): Promise<MergeSummary>;
 }
 
@@ -51,6 +52,7 @@ export function AppStateProvider({ children, fallback }: { children: ComponentCh
   const [shortfall, setShortfall] = useState<ShortfallSignal[]>([]);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const worker = useRef<Worker | null>(null);
   const seq = useRef(0);
   const timer = useRef<number | undefined>(undefined);
@@ -90,10 +92,17 @@ export function AppStateProvider({ children, fallback }: { children: ComponentCh
   if (error) return <p role="alert">TreeTracker could not open its storage: {error}. Restart the app; if this keeps happening, export a sync file from the other phone as a backup.</p>;
   if (!repo || !records || !derived) return <>{fallback}</>;
 
-  const save = async (changed: AnyRecord[]) => {
-    if (!changed.length) return;
-    await repo.put(changed);
-    setRecords(await repo.all());
+  const save = async (changed: AnyRecord[]): Promise<boolean> => {
+    if (!changed.length) return true;
+    try {
+      await repo.put(changed);
+      setRecords(await repo.all());
+      setSaveError(null);
+      return true;
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : String(e));
+      return false;
+    }
   };
 
   const value: AppState = {
@@ -108,11 +117,27 @@ export function AppStateProvider({ children, fallback }: { children: ComponentCh
       const file = parseSyncFile(text);
       const res = mergeRecords(records, file.records);
       if (res.maxHlc) clock.receive(res.maxHlc);
-      await save(res.changed);
+      if (!(await save(res.changed))) throw new Error('The imported records could not be saved on this phone.');
       const summary = { added: res.added, updated: res.updated, deleted: res.deleted, activePlanChanged: res.activePlanChanged };
       setSyncTimes({ lastImport: Date.now(), lastImportSummary: `${res.added} added, ${res.updated} updated, ${res.deleted} deleted` });
       return summary;
     },
   };
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider value={value}>
+      {saveError && (
+        <div class="banner raised save-error" role="alert">
+          <strong>Your last change could not be saved.</strong>
+          <div class="banner-body">
+            The phone said: {saveError}. If the phone is full, free some space. Then open Sync and export a sync file as a backup.
+          </div>
+          <div class="row-buttons">
+            <button type="button" class="btn" onClick={() => setSaveError(null)}>Dismiss</button>
+            <button type="button" class="btn" onClick={() => { setSaveError(null); location.hash = '/sync'; }}>Open Sync</button>
+          </div>
+        </div>
+      )}
+      {children}
+    </Ctx.Provider>
+  );
 }

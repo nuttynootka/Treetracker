@@ -31,9 +31,18 @@ describe('predictProfile', () => {
     for (let i = 1; i < p.points.length; i++) expect(p.points[i].circ).toBeLessThanOrEqual(p.points[i - 1].circ);
   });
 
-  it('caps the length at 110% of the longest measured tree', () => {
-    const trees = [tree(20, 40, [30, 20, 14])];
+  it('caps the length at 110% of the longest measured tree once 3 trees are measured', () => {
+    const trees = [tree(20, 40, [30, 20, 14]), tree(18, 38, [29, 19, 13]), tree(19, 39, [29, 20, 14])];
     expect(predictProfile(37.7, trees, S).lengthFt).toBeLessThanOrEqual(22 + 1e-9);
+  });
+
+  it('ignores trees too short to have any reading', () => {
+    expect(predictProfile(37.7, [tree(3, 40, [])], S)).toEqual(priorProfile(37.7, S));
+  });
+
+  it('stays finite when the taper setting is 0', () => {
+    const p = predictProfile(37.7, [], { ...S, priorTaperPerFt: 0 });
+    expect(Number.isFinite(p.lengthFt)).toBe(true);
   });
 
   it('ignores deleted trees', () => {
@@ -42,8 +51,9 @@ describe('predictProfile', () => {
 });
 
 describe('learnedMaxLengthFt', () => {
-  it('is null with no trees and 1.1 x the longest otherwise', () => {
+  it('is null until 3 usable trees are measured, then 1.1 x the longest', () => {
     expect(learnedMaxLengthFt([])).toBeNull();
-    expect(learnedMaxLengthFt([tree(20, 40, [30, 20, 14]), syntheticTree()])).toBeCloseTo(37.4, 9);
+    expect(learnedMaxLengthFt([tree(20, 40, [30, 20, 14]), syntheticTree()])).toBeNull();
+    expect(learnedMaxLengthFt([tree(20, 40, [30, 20, 14]), syntheticTree(), tree(3, 40, []), tree(12, 30, [20])])).toBeCloseTo(37.4, 9);
   });
 });

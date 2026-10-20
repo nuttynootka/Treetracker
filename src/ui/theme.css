@@ -168,3 +168,4 @@ input, select, textarea {
 .check input { width: 28px; height: 28px; accent-color: var(--green); }
 .muted-line { font-size: 15px; margin: var(--s2) 0; }
 .mono-pre { white-space: pre-wrap; font-family: var(--font-body); font-size: 14px; line-height: 1.5; padding: var(--s4); }
+.save-error { position: sticky; top: 0; z-index: 25; max-width: 480px; margin: 0 auto var(--s4); }

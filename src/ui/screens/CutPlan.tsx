@@ -6,8 +6,11 @@ import { navigate } from '../router';
 
 export function CutPlan({ treeId, isNew }: { treeId: string; isNew: boolean }) {
   const app = useApp();
-  const [toast, setToast] = useState(isNew);
   const tree = app.records.find((r) => r.id === treeId && r.type === 'tree');
+  const undoMs = app.derived.settings.undoSeconds * 1000;
+  // Only offer Undo within its window, even if Back returns to this screen later.
+  const [undoLeft] = useState(() => (isNew && tree && tree.type === 'tree' ? undoMs - (Date.now() - tree.createdAt) : 0));
+  const [toast, setToast] = useState(undoLeft > 0);
   if (!tree || tree.type !== 'tree' || tree.deleted)
     return (
       <Screen title="Cut plan">
@@ -41,7 +44,7 @@ export function CutPlan({ treeId, isNew }: { treeId: string; isNew: boolean }) {
         <Button wide onClick={() => navigate(`/cut?tree=${tree.id}`)}>Edit these logs</Button>
       </div>
       {toast && (
-        <Toast message="Tree saved." actionLabel="Undo" timeoutMs={app.derived.settings.undoSeconds * 1000}
+        <Toast message="Tree saved." actionLabel="Undo" timeoutMs={undoLeft}
           onClose={() => setToast(false)}
           onAction={async () => {
             await app.run((recs) => app.actions.undoSubmit(tree.id, recs));

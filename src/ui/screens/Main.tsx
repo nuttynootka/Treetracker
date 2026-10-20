@@ -43,7 +43,7 @@ export function Main() {
     if (v.errors.length || (v.warnings.length && !override) || saving) return;
     setSaving(true);
     let treeId = '';
-    await app.run((recs) => {
+    const ok = await app.run((recs) => {
       const { tree, logs } = app.actions.submitTree(
         { lengthFt: lengthFt!, buttCirc: parseNumber(butt)!, readings: vals as number[], warningsOverridden: v.warnings.length > 0 },
         recs,
@@ -51,6 +51,10 @@ export function Main() {
       treeId = tree.id;
       return [tree, ...logs];
     });
+    if (!ok) {
+      setSaving(false);
+      return;
+    }
     setLen(''); setButt(''); setReadings({}); setTried(false); setOverride(false); setSaving(false);
     navigate(`/plan/${treeId}?new=1`);
   };

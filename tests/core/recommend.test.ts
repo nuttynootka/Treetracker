@@ -6,6 +6,7 @@ import { DEFAULT_SETTINGS as S } from '../../src/core/seed';
 import { rowKey } from '../../src/core/types';
 import type { PlannerRow } from '../../src/core/types';
 import { v1PlannerRows } from '../helpers/rows';
+import { tree } from '../helpers/trees';
 
 describe('candidateWaists', () => {
   it('steps 1 in from 22 and always includes the maximum', () => {
@@ -45,6 +46,14 @@ describe('recommend', () => {
     const r = recommend(v1PlannerRows(), [], S, { maxWaist: 34.6 });
     expect(r.treesNeeded).toBeNull();
     expect(r.unfillable).toContain('16|28.3');
+  });
+});
+
+describe('recommend after a short first tree', () => {
+  it('still recommends trees when the only measured tree is a 3 ft butt section', () => {
+    const r = recommend(v1PlannerRows(), [tree(3, 40, [])], S);
+    expect(r.next).toHaveLength(3);
+    expect(r.treesNeeded).not.toBeNull();
   });
 });
 

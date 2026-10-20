@@ -78,8 +78,13 @@ function WallEditor({ plan, onClose }: { plan: PlanVersion; onClose: () => void 
   const set = (k: string) => (v: string) => setVals((x) => ({ ...x, [k]: v }));
   const n = (k: string) => parseNumber(vals[k] ?? '');
   const pieces = (vals.pieces ?? '').split(/[ ,]+/).filter(Boolean).map(parseNumber);
-  const numKeys = ['post', 'tenon', 'ext', 'int', 'below', 'above', ...w.exteriorWalls.map((_, i) => `wall${i}`), ...CLASSES.map((c) => `h${c}`)];
-  const ok = numKeys.every((k) => n(k) !== null && n(k)! >= 0) && pieces.length > 0 && pieces.every((p) => p !== null && p > 0);
+  const zeroOk = ['post', 'tenon', 'below', 'above'];
+  const mustBePositive = ['ext', 'int', ...w.exteriorWalls.map((_, i) => `wall${i}`), ...CLASSES.map((c) => `h${c}`)];
+  const ok =
+    zeroOk.every((k) => n(k) !== null && n(k)! >= 0) &&
+    mustBePositive.every((k) => n(k) !== null && n(k)! > 0) &&
+    pieces.length > 0 &&
+    pieces.every((p) => p !== null && p > 0);
   return (
     <Sheet open title="Edit walls" onClose={onClose}>
       <p class="muted-line secondary">Saving makes a new plan version. You can undo it.</p>
