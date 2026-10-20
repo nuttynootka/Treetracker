@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { candidatePlans, comparePlan, detectShortfall, supplyableClasses } from '../../src/core/recalc';
 import { DEFAULT_SETTINGS as S, seedRecords } from '../../src/core/seed';
-import type { PlanVersion } from '../../src/core/types';
+import type { NeedRow, PlanVersion } from '../../src/core/types';
 import type { Recommendation } from '../../src/core/recommend';
 import { log } from '../helpers/records';
 import { syntheticTree } from '../helpers/trees';
@@ -52,12 +52,23 @@ describe('comparePlan', () => {
   it('counts the extra pieces and keeps already-cut logs counting', () => {
     const cand = candidatePlans('exterior', [25.2], v1())[0];
     const logs = [log(16, 30, 8, { source: 'tree' })];
-    const c = comparePlan(v1(), cand, { logs, trees: [], s: S });
+    const rows = seedRecords().filter((r) => r.type === 'need') as NeedRow[];
+    const c = comparePlan(v1(), cand, { logs, trees: [], s: S, rows });
     expect(c.deltaPieces).toBe(7);
     expect(c.deltaFeet).toBe(82); // one more course of 2×16 + 12 + 3×10 + 8 ft
     expect(c.logsStillCounting).toBe(8);
     expect(c.logsTotal).toBe(8);
     expect(c.treesNeededBefore).not.toBeNull();
+  });
+});
+
+describe('comparePlan with hand-edited rows', () => {
+  it('starts from the rows actually in use, and keeps hand-added rows in both plans', () => {
+    const cand = candidatePlans('exterior', [25.2], v1())[0];
+    const rows = (seedRecords().filter((r) => r.type === 'need') as NeedRow[]).map((r) => (r.lengthFt === 16 && r.minCirc === 28.3 ? { ...r, quantity: 2 } : r));
+    rows.push({ ...rows[0], id: 'hand', quantity: 5, planVersionId: null, lengthFt: 4, minCirc: 12.6 });
+    const c = comparePlan(v1(), cand, { logs: [], trees: [], s: S, rows });
+    expect(c.deltaPieces).toBe(77 + 68 + 5 - (138 - 6 + 5));
   });
 });
 

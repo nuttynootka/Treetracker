@@ -13,7 +13,7 @@ export function LogsNeeded() {
   return (
     <Screen title="Logs needed">
       <Progress value={d.totals.have} max={d.totals.needed} label={`${d.totals.have} of ${d.totals.needed} logs done · ${toCut} to cut`} />
-      <p class="muted-line secondary">Wall plan version {d.plan.version}. Sizes are minimums: longer or larger around logs also count.</p>
+      <p class="muted-line secondary">Wall plan version {d.versionOf.get(d.plan.id)}. Sizes are minimums: longer or larger around logs also count.</p>
       <div class="list" data-testid="needed-list">
         {d.rowViews.map((v) => (
           <ListRow key={v.row.id} done={v.done} title={sizeLabel(v.row.lengthFt, v.row.minCirc)}

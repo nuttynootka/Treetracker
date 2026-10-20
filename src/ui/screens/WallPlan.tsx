@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useRef, useState } from 'preact/hooks';
 import { parseNumber } from '../../core/num';
 import { candidatePlans, comparePlan, supplyableClasses } from '../../core/recalc';
 import type { CandidatePlan } from '../../core/recalc';
@@ -135,6 +135,9 @@ export function WallPlan() {
   const [editing, setEditing] = useState<{ side: Side; text: string } | null>(null);
   const [walls, setWalls] = useState(false);
   const [msg, setMsg] = useState('');
+  const [courseError, setCourseError] = useState('');
+  const accepting = useRef(false); // blocks a second tap while the first accept is saving
+  const vOf = (id: string | undefined) => (id ? d.versionOf.get(id) : undefined);
   const allowedNow = allowed ?? supplyableClasses(d.logs, app.rec, CLASSES);
 
   const build = (sides: { side: Side; courses?: number[] }[]) => {
@@ -146,17 +149,17 @@ export function WallPlan() {
           ? [{ side, courses, heightIn: stackHeight(courses, plan.wall), diffIn: stackHeight(courses, plan.wall) - (side === 'exterior' ? plan.wall.exteriorHeightIn : plan.wall.interiorHeightIn),
               rows: side === 'exterior' ? generateRows(courses, [], plan.wall) : generateRows([], courses, plan.wall) }]
           : candidatePlans(side, allowedNow, plan);
-        for (const c of list) out.push({ ...c, cmp: comparePlan(plan, c, { logs: d.logs, trees: d.trees, s: d.settings }) });
+        for (const c of list) out.push({ ...c, cmp: comparePlan(plan, c, { logs: d.logs, trees: d.trees, s: d.settings, rows: d.activeRows }) });
       }
       setCands(out);
       setWorking(false);
     }, 30);
   };
 
-  const prev = [...d.plans].reverse().find((p) => p.version < plan.version);
+  const prev = d.plans[d.plans.findIndex((p) => p.id === plan.id) - 1];
   return (
     <Screen title="Wall plan">
-      <p class="muted-line">Version {plan.version}{plan.note ? ` · ${plan.note}` : ''}. The logs needed list is built from these courses.</p>
+      <p class="muted-line">Version {vOf(plan.id)}{plan.note ? ` · ${plan.note}` : ''}. The logs needed list is built from these courses.</p>
       <CoursesCard plan={plan} side="exterior" />
       <CoursesCard plan={plan} side="interior" />
 
@@ -184,9 +187,13 @@ export function WallPlan() {
           onDismiss={() => setCands(cands.filter((_, j) => j !== i))}
           onEdit={() => setEditing({ side: c.side, text: c.courses.join(', ') })}
           onAccept={async () => {
-            await app.run((recs) => app.actions.acceptPlan(c, recs));
+            if (accepting.current) return;
+            accepting.current = true;
+            const ok = await app.run((recs) => app.actions.acceptPlan(c, recs));
+            accepting.current = false;
+            if (!ok) return;
             setCands(null);
-            setMsg(`Now using version ${plan.version + 1}.`);
+            setMsg(`Now using version ${d.plans.length + 1}.`);
           }} />
       ))}
       {msg && <p class="label" role="status">{msg}</p>}
@@ -194,27 +201,36 @@ export function WallPlan() {
       <h2>Versions</h2>
       <div class="list">
         {d.plans.map((p) => (
-          <div key={p.id} class="list-row raised"><span class="row-main"><span class="row-title">Version {p.version}{p.id === plan.id ? ' (in use)' : ''}</span>
+          <div key={p.id} class="list-row raised"><span class="row-main"><span class="row-title">Version {vOf(p.id)}{p.id === plan.id ? ' (in use)' : ''}</span>
             <span class="row-detail secondary">{p.note}{p.createdAt ? ` · ${dateText(p.createdAt)}` : ''}</span></span></div>
         ))}
       </div>
       <div class="stack" style={{ marginTop: '12px' }}>
         <Button wide disabled={!prev} onClick={async () => {
           await app.run((recs) => app.actions.undoPlan(recs));
-          setMsg(prev ? `Back to version ${prev.version}.` : '');
-        }}>Undo: go back to version {prev?.version ?? '—'}</Button>
+          setMsg(prev ? `Back to version ${vOf(prev.id)}.` : '');
+        }}>Undo: go back to version {vOf(prev?.id) ?? '—'}</Button>
         <Button wide onClick={() => setWalls(true)}>Edit walls</Button>
       </div>
 
       {editing && (
-        <Sheet open title="Edit courses" onClose={() => setEditing(null)}>
+        <Sheet open title="Edit courses" onClose={() => { setEditing(null); setCourseError(''); }}>
           <div class="field">
             <label for="ec">{editing.side === 'exterior' ? 'Exterior' : 'Interior'} courses, bottom to top (in around, separated by commas)</label>
             <input id="ec" class="inset" value={editing.text} onInput={(e) => setEditing({ ...editing, text: (e.target as HTMLInputElement).value })} />
           </div>
+          {courseError && <p class="msg msg-error" role="alert">{courseError}</p>}
           <Button variant="primary" wide onClick={() => {
             const courses = editing.text.split(/[ ,]+/).filter(Boolean).map(parseNumber);
-            if (!courses.length || courses.some((c) => c === null || c <= 0)) return;
+            if (!courses.length || courses.some((c) => c === null || c <= 0)) {
+              setCourseError('Enter circumferences in inches, separated by commas.');
+              return;
+            }
+            if (courses.some((c, i) => i > 0 && c! > courses[i - 1]!)) {
+              setCourseError('Put the largest courses at the bottom: no course may be larger around than the one below it.');
+              return;
+            }
+            setCourseError('');
             build([{ side: editing.side, courses: courses as number[] }]);
             setEditing(null);
           }}>Compare this plan</Button>

@@ -119,15 +119,22 @@ function treesNeeded(rows: GeneratedRow[], logs: LogCut[], trees: Tree[], s: Set
   return { rec: recommend(remainingPlannerRows(need, m.have), trees, s), have: [...m.have.values()].reduce((a, b) => a + b, 0) };
 }
 
+/**
+ * Compare a candidate with the rows in use now. `rows` are the active needs rows, including hand edits;
+ * rows added by hand (no plan version) carry over to the new plan, while generated rows are rebuilt.
+ */
 export function comparePlan(
   current: PlanVersion,
   cand: CandidatePlan,
-  ctx: { logs: LogCut[]; trees: Tree[]; s: SettingsValues },
+  ctx: { logs: LogCut[]; trees: Tree[]; s: SettingsValues; rows: NeedRow[] },
 ) {
-  const before = generateRows(current.exteriorCourses, current.interiorCourses, current.wall);
+  const live = ctx.rows.filter((r) => !r.deleted);
+  const before: GeneratedRow[] = live.map((r) => ({ lengthFt: r.lengthFt, minCirc: r.minCirc, quantity: r.quantity }));
+  const handAdded = live.filter((r) => r.planVersionId === null).map((r) => ({ lengthFt: r.lengthFt, minCirc: r.minCirc, quantity: r.quantity }));
   const after = [
     ...cand.rows,
     ...sideRows(cand.side === 'exterior' ? 'interior' : 'exterior', cand.side === 'exterior' ? current.interiorCourses : current.exteriorCourses, current),
+    ...handAdded,
   ];
   const b = treesNeeded(before, ctx.logs, ctx.trees, ctx.s);
   const a = treesNeeded(after, ctx.logs, ctx.trees, ctx.s);

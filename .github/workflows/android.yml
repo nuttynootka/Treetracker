@@ -1,3 +1,6 @@
+# Do not rename this workflow or this file. The APK version number comes from
+# github.run_number, which restarts at 1 for a renamed workflow; Android then refuses
+# to install the new build over the old one until the app is uninstalled (erasing its data).
 name: Build Android APK
 
 on:
@@ -7,6 +10,11 @@ on:
 
 permissions:
   contents: write
+
+# One build at a time, so two quick pushes cannot race to replace the "latest" release.
+concurrency:
+  group: android-release
+  cancel-in-progress: false
 
 jobs:
   build:

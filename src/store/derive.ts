@@ -11,7 +11,10 @@ export interface RowView {
 export interface Derived {
   settings: Settings;
   plan: PlanVersion;
+  /** Plan versions in a fixed order every phone agrees on. */
   plans: PlanVersion[];
+  /** The number shown for each plan: its place in `plans`, so two phones that both made a "version 2" still show 2 and 3. */
+  versionOf: Map<string, number>;
   activeRows: NeedRow[];
   rowViews: RowView[];
   extras: { log: LogCut; count: number }[];
@@ -24,7 +27,10 @@ export interface Derived {
 export function deriveState(records: AnyRecord[]): Derived {
   const settings = records.find((r): r is Settings => r.type === 'settings')!;
   const active = records.find((r): r is ActivePlan => r.type === 'active')!;
-  const plans = records.filter((r): r is PlanVersion => r.type === 'plan' && !r.deleted).sort((a, b) => a.version - b.version);
+  const plans = records
+    .filter((r): r is PlanVersion => r.type === 'plan' && !r.deleted)
+    .sort((a, b) => a.version - b.version || a.createdAt - b.createdAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const versionOf = new Map(plans.map((p, i) => [p.id, i + 1]));
   const plan = plans.find((p) => p.id === active.planVersionId) ?? plans[plans.length - 1];
   const activeRows = records
     .filter((r): r is NeedRow => r.type === 'need' && !r.deleted && (r.planVersionId === plan.id || r.planVersionId === null))
@@ -42,6 +48,7 @@ export function deriveState(records: AnyRecord[]): Derived {
     settings,
     plan,
     plans,
+    versionOf,
     activeRows,
     rowViews,
     extras: m.extras.map((e) => ({ log: byId.get(e.logId)!, count: e.count })),

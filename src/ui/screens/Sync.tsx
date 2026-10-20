@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks';
 import { buildExport, SyncError, syncFileName } from '../../core/sync';
 import { useApp } from '../../store/app-state';
 import { getDevice, getSyncTimes, setSyncTimes } from '../../store/local';
-import { pickTextFile, shareFile } from '../../platform/share';
+import { isCancel, pickTextFile, shareFile } from '../../platform/share';
 import { Banner, Button, Screen } from '../components';
 import { ago } from '../format';
 
@@ -19,7 +19,13 @@ export function Sync() {
         <Button variant="primary" wide onClick={async () => {
           const dev = getDevice();
           const now = Date.now();
-          await shareFile(syncFileName(dev.name, now), 'application/json', JSON.stringify(buildExport(app.records, dev, now)));
+          try {
+            await shareFile(syncFileName(dev.name, now), 'application/json', JSON.stringify(buildExport(app.records, dev, now)));
+          } catch (e) {
+            if (isCancel(e)) return;
+            setMsg(`The sync file could not be exported: ${e instanceof Error ? e.message : String(e)}`);
+            return;
+          }
           setSyncTimes({ lastExport: now });
           setTimes(getSyncTimes());
           setMsg('Sync file created. Send it to the other phone.');

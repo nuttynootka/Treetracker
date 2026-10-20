@@ -113,6 +113,23 @@ describe('actions and derived totals', () => {
     expect(u.activeRows).toHaveLength(17);
   });
 
+  it('gives unique version numbers when both phones accepted a plan before syncing', () => {
+    let tt = 1000;
+    const a = createActions(new Clock('A', () => tt++), { id: 'A' }, () => tt++);
+    const b = createActions(new Clock('B', () => tt++), { id: 'B' }, () => tt++);
+    const base = seedRecords();
+    const plan = deriveState(base).plan as PlanVersion;
+    const [c1, c2] = candidatePlans('exterior', [25.2, 18.9, 15.8, 12.6], plan);
+    const fromA = a.acceptPlan(c1, base);
+    const fromB = b.acceptPlan(c2, base);
+    const merged = apply(apply(base, fromA), fromB);
+    const d = deriveState(merged);
+    expect(d.plans.map((p) => d.versionOf.get(p.id))).toEqual([1, 2, 3]);
+    expect(d.versionOf.get(d.plan.id)).toBe(3);
+    const back = deriveState(apply(merged, a.undoPlan(merged)));
+    expect(back.versionOf.get(back.plan.id)).toBe(2);
+  });
+
   it('editing a tree recomputes its waist estimate but keeps its plan', () => {
     const { actions, recs } = setup();
     const { tree, logs } = actions.submitTree(SYNTH, recs);

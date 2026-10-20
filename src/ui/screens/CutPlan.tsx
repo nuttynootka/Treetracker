@@ -1,7 +1,12 @@
 import { useState } from 'preact/hooks';
 import { useApp } from '../../store/app-state';
 import { Button, ListRow, Screen, Toast } from '../components';
-import { fmtIn } from '../format';
+import { fmtIn, sizeLabel } from '../format';
+
+const rowText = (key: string) => {
+  const [len, circ] = key.split('|');
+  return sizeLabel(Number(len), Number(circ));
+};
 import { navigate } from '../router';
 
 export function CutPlan({ treeId, isNew }: { treeId: string; isNew: boolean }) {
@@ -30,7 +35,7 @@ export function CutPlan({ treeId, isNew }: { treeId: string; isNew: boolean }) {
             <li key={i}>
               <ListRow
                 title={`${i + 1}. ${c.lengthFt} ft log`}
-                detail={`${(c.startIn / 12).toFixed(2)}–${(c.endIn / 12).toFixed(2)} ft from butt · small end ${fmtIn(c.smallCirc)} around`}
+                detail={`${(c.startIn / 12).toFixed(2)}–${(c.endIn / 12).toFixed(2)} ft from butt · small end ${fmtIn(c.smallCirc)} around · fills the ${rowText(c.rowKey)} row`}
               />
             </li>
           ))}

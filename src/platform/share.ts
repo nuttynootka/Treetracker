@@ -1,5 +1,11 @@
 import { Capacitor } from '@capacitor/core';
 
+/** True when the person closed the share sheet; that is not an error worth showing. */
+export function isCancel(e: unknown): boolean {
+  const m = e instanceof Error ? e.message : String(e);
+  return /cancel|abort/i.test(m);
+}
+
 /** Send a file out with the Android share sheet; in a browser, download it instead. */
 export async function shareFile(fileName: string, mime: string, content: string): Promise<void> {
   if (Capacitor.isNativePlatform()) {

@@ -141,7 +141,7 @@ export function createActions(clock: Clock, device: { id: string }, now: () => n
 
     undoPlan(records: AnyRecord[]): AnyRecord[] {
       const d = deriveState(records);
-      const prev = [...d.plans].reverse().find((p) => p.version < d.plan.version);
+      const prev = d.plans[d.plans.findIndex((p) => p.id === d.plan.id) - 1];
       return prev ? activate(prev, records) : [];
     },
 

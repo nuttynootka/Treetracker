@@ -80,6 +80,14 @@ describe('two phones syncing by file', () => {
 describe('parseSyncFile', () => {
   it('rejects text that is not JSON', () => expect(() => parseSyncFile('{')).toThrow(SyncError));
   it('rejects a file from another app', () => expect(() => parseSyncFile('{"format":"x"}')).toThrow(SyncError));
+  it('rejects a file with a damaged record and names it', () => {
+    const file = buildExport([...seedRecords(), { id: 'bad-tree', type: 'tree', updatedAt: 'x', deleted: false, deviceId: 'a' } as unknown as AnyRecord], { id: 'a', name: 'A' }, 1);
+    expect(() => parseSyncFile(JSON.stringify(file))).toThrow(/damaged.*bad-tree/);
+  });
+  it('accepts a normal export with trees and logs', () => {
+    const file = buildExport([...seedRecords(), syntheticTree(), log(8, 26)], { id: 'a', name: 'A' }, 1);
+    expect(parseSyncFile(JSON.stringify(file)).records).toHaveLength(seedRecords().length + 2);
+  });
   it('rejects a newer file version', () =>
     expect(() => parseSyncFile(JSON.stringify({ ...buildExport([], { id: 'a', name: 'A' }, 1), version: 2 }))).toThrow(/newer/));
 });
