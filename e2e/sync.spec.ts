@@ -17,7 +17,9 @@ async function importFile(page: Page, path: string): Promise<string> {
   const chooser = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Import sync file' }).click();
   await (await chooser).setFiles(path);
-  return (await page.getByTestId('sync-msg').textContent()) ?? '';
+  const msg = page.getByTestId('sync-msg');
+  await expect(msg).toHaveText(/^Imported:/); // the export message may still be showing until the import finishes
+  return (await msg.textContent()) ?? '';
 }
 
 test('two phones end with the same totals after syncing both ways', async ({ browser }, info) => {
