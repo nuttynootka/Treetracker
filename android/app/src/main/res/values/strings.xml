@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">TreeTracker</string>
+    <string name="title_activity_main">TreeTracker</string>
+    <string name="package_name">com.nuttynootka.treetracker</string>
+    <string name="custom_url_scheme">com.nuttynootka.treetracker</string>
+</resources>
