@@ -32,3 +32,4 @@ GitHub Actions (`.github/workflows/android.yml`) runs the tests, builds a signed
 | `android/` | Capacitor Android project |
 | `android-signing/` | The signing key, committed on purpose so updates keep their data |
 | `public/licenses/` | Font licenses (SIL Open Font License) |
+| `tools/make-icons.mjs` | Draws the app icon and splash images (`node tools/make-icons.mjs`) |
