@@ -10,7 +10,7 @@ export function Gallery() {
       <div class="tiles">
         <Tile value="37.7 in" caption="around at waist height" />
         <Tile value="34.6 in" caption="around at waist height" />
-        <Tile value="Working…" caption="around at waist height" />
+        <Tile value="…" caption="working it out" />
       </div>
       <div class="row-buttons">
         <Button>Raised</Button>

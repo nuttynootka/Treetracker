@@ -19,6 +19,13 @@ describe('candidatePlans', () => {
     expect(first.diffIn).toBeCloseTo(4.235, 2);
     expect(asMap(first.rows)).toEqual({ '16|25.2': 22, '12|25.2': 11, '10|25.2': 33, '8|25.2': 11 });
   });
+  it('prefers a uniform plan when smaller classes are also allowed', () => {
+    expect(candidatePlans('exterior', [25.2, 18.9, 15.8, 12.6], v1())[0].courses).toEqual(Array(11).fill(25.2));
+  });
+  it('never upgrades a side to larger logs than it uses now', () => {
+    for (const c of candidatePlans('interior', [28.3, 25.2, 18.9, 15.8, 12.6], v1(), 50))
+      expect(Math.max(...c.courses)).toBeLessThanOrEqual(18.9);
+  });
   it('rejects 10 courses of 25.2 in because they stack below 82 in', () => {
     expect(candidatePlans('exterior', [25.2], v1()).some((c) => c.courses.length === 10)).toBe(false);
   });

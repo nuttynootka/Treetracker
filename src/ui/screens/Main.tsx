@@ -64,7 +64,7 @@ export function Main() {
       <h1>Next 3 trees to cut</h1>
       <div class="tiles" aria-live="polite">
         {[0, 1, 2].map((i) => (
-          <Tile key={i} value={app.busy && !rec ? 'Working…' : rec?.next[i] !== undefined ? fmtIn(rec.next[i]) : '—'} caption="around at waist height" />
+          <Tile key={i} value={app.busy && !rec ? '…' : rec?.next[i] !== undefined ? fmtIn(rec.next[i]) : '—'} caption={app.busy && !rec ? 'working it out' : 'around at waist height'} />
         ))}
       </div>
       <p class="muted-line" data-testid="trees-needed">

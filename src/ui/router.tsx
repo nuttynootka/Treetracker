@@ -10,6 +10,8 @@ export function useRoute(): string {
       window.scrollTo(0, 0);
     };
     window.addEventListener('hashchange', on);
+    // Catch a change that happened between the first render and this listener being attached.
+    if (current() !== route) on();
     return () => window.removeEventListener('hashchange', on);
   }, []);
   return route;

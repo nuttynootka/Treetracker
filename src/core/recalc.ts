@@ -62,15 +62,17 @@ const feetCount = (rows: GeneratedRow[]) => rows.reduce((a, r) => a + r.quantity
 
 /**
  * Course plans using only the allowed classes, largest at the bottom, stacking within the height
- * tolerance. Ranked by fewest pieces, then fewest linear feet.
+ * tolerance. A side never moves to larger logs than it uses now, since the point is a shortage.
+ * Ranked by fewest pieces, then fewest linear feet, then fewest different sizes, then closest to the target height.
  */
 export function candidatePlans(side: 'exterior' | 'interior', allowed: number[], plan: PlanVersion, limit = 3): CandidatePlan[] {
   const w = plan.wall;
   const target = side === 'exterior' ? w.exteriorHeightIn : w.interiorHeightIn;
   const lo = target - w.toleranceBelowIn - 1e-9;
   const hi = target + w.toleranceAboveIn + 1e-9;
-  const classes = [...new Set(allowed.map((c) => Number(c.toFixed(1))))].sort((a, b) => b - a);
   const current = side === 'exterior' ? plan.exteriorCourses : plan.interiorCourses;
+  const largest = current.length ? Math.max(...current) : Infinity;
+  const classes = [...new Set(allowed.map((c) => Number(c.toFixed(1))))].filter((c) => c <= largest + 1e-9).sort((a, b) => b - a);
   const out: CandidatePlan[] = [];
   const counts = classes.map(() => 0);
 
@@ -91,7 +93,13 @@ export function candidatePlans(side: 'exterior' | 'interior', allowed: number[],
   };
   visit(0, 0);
   return out
-    .sort((a, b) => pieceCount(a.rows) - pieceCount(b.rows) || feetCount(a.rows) - feetCount(b.rows))
+    .sort(
+      (a, b) =>
+        pieceCount(a.rows) - pieceCount(b.rows) ||
+        feetCount(a.rows) - feetCount(b.rows) ||
+        new Set(a.courses).size - new Set(b.courses).size ||
+        Math.abs(a.diffIn) - Math.abs(b.diffIn),
+    )
     .slice(0, limit);
 }
 
