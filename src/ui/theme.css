@@ -1,0 +1,104 @@
+:root {
+  --base: #e0e5ea;
+  --graphite: #272c32;
+  --ink2: #515960;
+  --green: #5f8a79;
+  --blue: #6f90b0;
+  --text-on-green: #171b1f;
+  --text-on-blue: #171b1f;
+  --shadow-dark: #babec2;
+  --shadow-light: #f7f8fa;
+
+  --raise: 6px 6px 12px var(--shadow-dark), -6px -6px 12px var(--shadow-light);
+  --raise-lg: 10px 10px 22px var(--shadow-dark), -10px -10px 22px var(--shadow-light);
+  --inset: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
+
+  --r-sm: 12px;
+  --r-md: 18px;
+  --r-lg: 26px;
+
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+
+  --font-head: 'Antonio', 'Arial Narrow', sans-serif;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--base);
+  color: var(--graphite);
+  font-family: var(--font-body);
+  font-size: 16px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+h1 {
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 38px;
+  line-height: 1.1;
+  margin: 0 0 var(--s4);
+}
+
+h2 {
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 24px;
+  margin: var(--s5) 0 var(--s3);
+}
+
+.big-num {
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 30px;
+  line-height: 1.1;
+}
+
+label, .label {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--graphite);
+}
+
+.secondary { color: var(--ink2); }
+
+input, select, textarea {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 17px;
+  color: var(--graphite);
+}
+
+.raised { background: var(--base); box-shadow: var(--raise); border-radius: var(--r-md); }
+.raised-lg { background: var(--base); box-shadow: var(--raise-lg); border-radius: var(--r-lg); }
+.inset { background: var(--base); box-shadow: var(--inset); border-radius: var(--r-sm); }
+
+.btn {
+  min-height: 48px;
+  min-width: 48px;
+  padding: var(--s3) var(--s4);
+  border: 2px solid transparent;
+  border-radius: var(--r-md);
+  background: var(--base);
+  box-shadow: var(--raise);
+  color: var(--graphite);
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+.btn:active:not(:disabled) { box-shadow: var(--inset); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-primary { background: var(--green); color: var(--text-on-green); }
+
+:focus-visible { outline: 3px solid var(--graphite); outline-offset: 2px; }
