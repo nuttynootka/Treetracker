@@ -33,7 +33,7 @@ It improves its recommendations as trees are measured, and it can propose a new 
 - Stack: web UI wrapped with Capacitor (choice A).
 - APK signing: a single signing key file is committed to the repository (choice B), so every update installs over the previous one without losing data. Accepted risk: anyone who can see the repository could sign an app that Android would accept as an update.
 - Addendum questions, all answered with the proposed defaults:
-  - Wall height target 84 in, accepted range 82 to 88 in (editable tolerance).
+  - Wall height target 84 in, accepted range 82 to 88.5 in (editable tolerance; widened from 88 by the owner so 11 courses of 25.2 in, 88.2 in, qualify).
   - Largest courses at the bottom; no course larger around than the one below it.
   - Course height defaults to circumference ÷ π, editable per circumference class.
   - Windows not modelled now.
@@ -82,7 +82,7 @@ Device id is generated on first launch and stored locally. Each device can be gi
 | Tenon length | 3 in |
 | Exterior wall height of logs | 84 in |
 | Interior wall height of logs | 84 in |
-| Wall height tolerance | −2 in / +4 in (82 to 88 in) |
+| Wall height tolerance | −2 in / +4.5 in (82 to 88.5 in) |
 | Course height per circumference class | circumference ÷ π |
 
 ### 5.2 Tree profile and waist circumference

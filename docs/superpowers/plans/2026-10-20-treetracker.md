@@ -207,7 +207,7 @@ export const rowKey = (lengthFt: number, minCirc: number) => `${lengthFt}|${minC
   - `generateRows(exteriorCourses: number[], interiorCourses: number[], w: WallSettings): { lengthFt: number; minCirc: number; quantity: number }[]`. Each exterior wall with `hasLogs` gives one piece per course. Each interior course gives the `interiorPiecesIn` pieces. Each piece is rounded up to whole feet with `Math.ceil(in / 12)`, then grouped by (lengthFt, course circ). The result is sorted by length descending, then circumference descending.
   - In `seed.ts`:
     - `DEFAULT_SETTINGS: SettingsValues`, with the §5.1 values and `shortfallMinTrees: 3`, `shortfallYieldRatio: 0.6`, `spareFraction: 0.1`, `undoSeconds: 10`, `topCirc: 12.6`, `priorTaperPerFt: 0.59`, `maxWaistCirc: 37.7`.
-    - `DEFAULT_WALL: WallSettings`, with post 13, tenon 3, heights 84/84, tolerance 2/4, empty `courseHeightIn`, walls W1 120, W2 96 (no logs), W3 192, W4 144, W5 192, W6 96, W7 120, W8 120, and interior pieces `[48,48,60,62]`.
+    - `DEFAULT_WALL: WallSettings`, with post 13, tenon 3, heights 84/84, tolerance 2/4.5, empty `courseHeightIn`, walls W1 120, W2 96 (no logs), W3 192, W4 144, W5 192, W6 96, W7 120, W8 120, and interior pieces `[48,48,60,62]`.
     - `PLAN_V1_COURSES = { exterior: [28.3×4, 25.2×6], interior: [18.9×4, 15.8×8, 12.6×5] }`.
     - `needRowId(planId: Id, lengthFt: number, minCirc: number): Id`, returning `` `${planId}:${rowKey(lengthFt,minCirc)}` ``.
     - `seedRecords(): AnyRecord[]`: settings (id `settings`), plan (id `plan-v1`, version 1), its rows (ids from `needRowId`), and active (id `active-plan`). All carry `SEED_HLC`, `deviceId: 'seed'`, `createdBy: 'seed'` and `createdAt: 0`.
@@ -427,7 +427,7 @@ Make circumferences non-increasing (running min), and clamp them ≥ topCirc bef
 
 - [ ] **Step 1: Write failing tests:**
   - With allowed `[25.2]` on the exterior of plan v1, the first candidate has courses `[25.2×11]`, height ≈ 88.23, `diffIn ≈ +4.23`, and the addendum rows `16:22, 12:11, 10:33, 8:11`.
-    - Note: 88.23 > 88 with the default tolerance, so this test sets `toleranceAboveIn: 4.5`. A second assertion checks that with the default 4 the 11-course plan is excluded and `[25.2×10]` (80.2 in) is excluded too (below 82). The test documents this.
+    - With the default tolerance (+4.5) the 11-course plan qualifies. `[25.2×10]` (80.2 in) is excluded (below 82).
   - Candidates never contain a course larger than the course below it.
   - `comparePlan` for v1 → 11×25.2 gives `deltaPieces === 7`.
   - `logsStillCounting` counts the matches against the new rows. With 8 cut logs of 16 ft at 30 in, all 8 still count under 11×25.2, because a 25.2 row accepts 30 in logs.
@@ -436,8 +436,7 @@ Make circumferences non-increasing (running min), and clamp them ≥ topCirc bef
 - [ ] **Step 2:** Run. Expected: FAIL.
 - [ ] **Step 3:** Implement.
 - [ ] **Step 4:** Run. Expected: PASS.
-- [ ] **Step 5:** Tell the owner in the final report that 11 × 25.2 in stacks to 88.2 in, just outside the agreed 82–88 in range. The tolerance is editable.
-- [ ] **Step 6:** Commit: `feat(core): shortfall signals and candidate course plans`.
+- [ ] **Step 5:** Commit: `feat(core): shortfall signals and candidate course plans`.
 
 ---
 
@@ -685,7 +684,7 @@ Make circumferences non-increasing (running min), and clamp them ≥ topCirc bef
   - Both show identical Logs needed totals.
   - A second import reports "0 added, 0 updated, 0 deleted".
 - [ ] **Step 3: Write `wall.spec.ts`:**
-  - In Wall plan, uncheck 28.3, set the tolerance above to 4.5, build alternatives, and accept 11 × 25.2.
+  - In Wall plan, uncheck 28.3, build alternatives, and accept 11 × 25.2.
   - Logs needed shows 16 ft · 25.2 in need 22.
   - Undo returns 16 ft · 28.3 in need 8.
 - [ ] **Step 4:** Run `npm run e2e`. Expected: all specs PASS. Fix any app bugs these tests reveal in the owning screen, not by loosening the test.
@@ -752,6 +751,5 @@ Make circumferences non-increasing (running min), and clamp them ≥ topCirc bef
 - [ ] **Step 3:** Report to the owner:
   - The benchmark counts.
   - Any change to the weight formula.
-  - The 88.2 in tolerance note (Task 9).
   - The CI run link and the release link.
   - What the owner must test on the phones (spec §11 stages 1 and 8: airplane mode, closing the app, glare, gloves, speed).
