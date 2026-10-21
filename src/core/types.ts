@@ -81,9 +81,19 @@ export interface WallSettings {
   interiorPiecesIn: number[];
 }
 
+/** Smallest circumference a side's rows require, overriding the course circumference. */
+export interface RowMinimums {
+  exterior?: number;
+  interior?: number;
+}
+
 export interface PlanVersion extends Base {
   type: 'plan';
   version: number;
+  /** Shown in the plans list. Older records have none; see planName(). */
+  name?: string;
+  archived?: boolean;
+  rowMinimums?: RowMinimums;
   exteriorCourses: number[];
   interiorCourses: number[];
   wall: WallSettings;
@@ -95,6 +105,8 @@ export interface PlanVersion extends Base {
 export interface ActivePlan extends Base {
   type: 'active';
   planVersionId: Id;
+  /** The plan used before this one, for "Switch back". */
+  previousPlanId?: Id | null;
 }
 
 export interface SettingsValues {

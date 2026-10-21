@@ -1,4 +1,4 @@
-import type { WallSettings } from './types';
+import type { RowMinimums, WallSettings } from './types';
 
 export interface GeneratedRow {
   lengthFt: number;
@@ -19,8 +19,11 @@ export function stackHeight(courses: number[], w: WallSettings): number {
   return courses.reduce((s, c) => s + courseHeight(c, w), 0);
 }
 
-/** Regenerate the logs-needed rows from the course plan: every piece rounded up to whole feet, grouped by length and circumference. */
-export function generateRows(exteriorCourses: number[], interiorCourses: number[], w: WallSettings): GeneratedRow[] {
+/**
+ * Regenerate the logs-needed rows from the course plan: every piece rounded up to whole feet, grouped by
+ * length and circumference. A side with a row minimum requires that circumference instead of the course's.
+ */
+export function generateRows(exteriorCourses: number[], interiorCourses: number[], w: WallSettings, minimums: RowMinimums = {}): GeneratedRow[] {
   const counts = new Map<string, GeneratedRow>();
   const add = (pieceIn: number, circ: number) => {
     const lengthFt = Math.ceil(pieceIn / 12);
@@ -30,7 +33,7 @@ export function generateRows(exteriorCourses: number[], interiorCourses: number[
     counts.set(key, row);
   };
   for (const circ of exteriorCourses)
-    for (const wall of w.exteriorWalls) if (wall.hasLogs) add(pieceLengthIn(wall.centerlineIn, w), circ);
-  for (const circ of interiorCourses) for (const p of w.interiorPiecesIn) add(p, circ);
+    for (const wall of w.exteriorWalls) if (wall.hasLogs) add(pieceLengthIn(wall.centerlineIn, w), minimums.exterior ?? circ);
+  for (const circ of interiorCourses) for (const p of w.interiorPiecesIn) add(p, minimums.interior ?? circ);
   return [...counts.values()].sort((a, b) => b.lengthFt - a.lengthFt || b.minCirc - a.minCirc);
 }
