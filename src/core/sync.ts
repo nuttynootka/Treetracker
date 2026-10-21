@@ -30,11 +30,16 @@ export function isValidRecord(x: unknown): boolean {
       return nums(r, ['lengthFt', 'smallCirc', 'quantity', 'createdAt']) && (r.source === 'tree' || r.source === 'manual');
     case 'need':
       return nums(r, ['lengthFt', 'minCirc', 'quantity']) && (r.planVersionId === null || isStr(r.planVersionId));
-    case 'plan':
+    case 'plan': {
+      const m = r.rowMinimums as Record<string, unknown> | undefined;
       return nums(r, ['version', 'createdAt']) && numList(r.exteriorCourses) && numList(r.interiorCourses) &&
-        !!r.wall && typeof r.wall === 'object';
+        !!r.wall && typeof r.wall === 'object' &&
+        (r.name === undefined || isStr(r.name)) &&
+        (r.archived === undefined || typeof r.archived === 'boolean') &&
+        (m === undefined || (typeof m === 'object' && m !== null && Object.values(m).every((v) => v === undefined || isNum(v))));
+    }
     case 'active':
-      return isStr(r.planVersionId);
+      return isStr(r.planVersionId) && (r.previousPlanId === undefined || r.previousPlanId === null || isStr(r.previousPlanId));
     case 'settings':
       return nums(r, ['kerfIn', 'buttTrimIn', 'stumpHeightFt', 'waistHeightFt', 'maxWaistCirc', 'topCirc', 'priorTaperPerFt', 'shortfallMinTrees', 'shortfallYieldRatio', 'spareFraction', 'undoSeconds']);
     default:

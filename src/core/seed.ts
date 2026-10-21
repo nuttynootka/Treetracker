@@ -56,6 +56,7 @@ export function seedRecords(): AnyRecord[] {
     type: 'plan',
     ...seedBase,
     version: 1,
+    name: 'Starting plan',
     exteriorCourses: [...PLAN_V1_COURSES.exterior],
     interiorCourses: [...PLAN_V1_COURSES.interior],
     wall: structuredClone(DEFAULT_WALL),
