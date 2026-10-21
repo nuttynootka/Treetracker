@@ -16,6 +16,7 @@ import { Reports } from './screens/Reports';
 import { Settings } from './screens/Settings';
 import { Sync } from './screens/Sync';
 import { WallPlan } from './screens/WallPlan';
+import { Plans } from './screens/Plans';
 
 function App() {
   const route = useRoute();
@@ -31,6 +32,7 @@ function App() {
     case 'settings': return <Settings />;
     case 'sync': return <Sync />;
     case 'wall': return <WallPlan />;
+    case 'plans': return <Plans />;
     default: return <Main />;
   }
 }

@@ -42,8 +42,8 @@ test('a double tap on accept makes only one new version', async ({ page }) => {
     b.click();
     b.click();
   });
-  await expect(page.getByText('Version 2 (in use)')).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'Now using the new plan.' })).toBeVisible();
   await page.waitForTimeout(1000); // give a second save time to land if the guard failed
-  expect(await page.locator('.row-title').filter({ hasText: /^Version/ }).allInnerTexts()).toEqual(['Version 1', 'Version 2 (in use)']);
-  await expect(page.getByRole('status').filter({ hasText: 'Now using version 2.' })).toBeVisible();
+  await page.goto('/#/plans');
+  expect(await page.locator('.plan-name').allInnerTexts()).toEqual(['Starting plan', 'Plan 2']);
 });

@@ -16,7 +16,7 @@ const input = (over: Partial<ReportInput> = {}): ReportInput => ({
   rec: { next: [37.7, 34.6, 34.6], treesNeeded: 40, spare: 4, unfillable: [], yieldPlan: [] },
   trees: [syntheticTree({ predicted: { readings: [35, 31, 27, 23, 18], lengthFt: 34, largeLogs: 1 } })],
   generatedAt: Date.UTC(2026, 9, 20),
-  planVersion: 1,
+  planName: 'Starting plan',
   ...over,
 });
 
@@ -30,7 +30,7 @@ describe('reportText', () => {
   });
   it('shows each row with its totals', () => {
     expect(text).toMatch(/16 ft · 28\.3 in around.*need 8.*have 3.*to cut 5/);
-    expect(text).toContain('Plan version 1');
+    expect(text).toContain('Wall plan: Starting plan');
   });
   it('shows next trees and the estimate', () => {
     expect(text).toContain('37.7 in around at waist height');

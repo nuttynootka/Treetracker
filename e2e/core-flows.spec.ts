@@ -52,7 +52,7 @@ test('submit, undo, resubmit, delete, and reload', async ({ page }) => {
 
 test('every screen fits a 360 px phone and never shows diameters or tree-length advice', async ({ page }) => {
   await submitSynthetic(page);
-  for (const path of ['/', '/add-logs', '/needed', '/cut', '/trees', '/reports', '/settings', '/sync', '/wall', '/dev/components']) {
+  for (const path of ['/', '/add-logs', '/needed', '/cut', '/trees', '/reports', '/settings', '/sync', '/wall', '/plans', '/dev/components']) {
     await page.goto(`/#${path}`);
     await page.waitForTimeout(300);
     await noWideOrBannedText(page);

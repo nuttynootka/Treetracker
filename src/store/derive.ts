@@ -1,4 +1,5 @@
 import { matchLogs, remainingPlannerRows } from '../core/matching';
+import { planName } from '../core/planfile';
 import type { LogCut, NeedRow, PlannerRow, PlanVersion, Settings, AnyRecord, Tree, ActivePlan } from '../core/types';
 
 export interface RowView {
@@ -15,6 +16,8 @@ export interface Derived {
   plans: PlanVersion[];
   /** The number shown for each plan: its place in `plans`, so two phones that both made a "version 2" still show 2 and 3. */
   versionOf: Map<string, number>;
+  /** Display name of every plan, by id. */
+  planNames: Map<string, string>;
   activeRows: NeedRow[];
   rowViews: RowView[];
   extras: { log: LogCut; count: number }[];
@@ -31,6 +34,7 @@ export function deriveState(records: AnyRecord[]): Derived {
     .filter((r): r is PlanVersion => r.type === 'plan' && !r.deleted)
     .sort((a, b) => a.version - b.version || a.createdAt - b.createdAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   const versionOf = new Map(plans.map((p, i) => [p.id, i + 1]));
+  const planNames = new Map(plans.map((p, i) => [p.id, planName(p, i + 1)]));
   const plan = plans.find((p) => p.id === active.planVersionId) ?? plans[plans.length - 1];
   const activeRows = records
     .filter((r): r is NeedRow => r.type === 'need' && !r.deleted && (r.planVersionId === plan.id || r.planVersionId === null))
@@ -49,6 +53,7 @@ export function deriveState(records: AnyRecord[]): Derived {
     plan,
     plans,
     versionOf,
+    planNames,
     activeRows,
     rowViews,
     extras: m.extras.map((e) => ({ log: byId.get(e.logId)!, count: e.count })),

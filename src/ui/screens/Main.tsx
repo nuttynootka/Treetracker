@@ -9,7 +9,7 @@ import { navigate } from '../router';
 
 const NAV: [string, string][] = [
   ['Add logs', '/add-logs'], ['Logs needed', '/needed'], ['Logs cut', '/cut'], ['Trees cut', '/trees'],
-  ['Reports', '/reports'], ['Wall plan', '/wall'], ['Settings', '/settings'], ['Sync', '/sync'],
+  ['Reports', '/reports'], ['Wall plan', '/wall'], ['Plans', '/plans'], ['Settings', '/settings'], ['Sync', '/sync'],
 ];
 
 const keyText = (key: string) => {

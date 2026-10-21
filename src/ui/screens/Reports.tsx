@@ -24,7 +24,7 @@ export function Reports() {
     rec: app.rec,
     trees: d.trees,
     generatedAt: Date.now(),
-    planVersion: d.versionOf.get(d.plan.id) ?? d.plan.version,
+    planName: d.planNames.get(d.plan.id) ?? '',
   };
   const text = reportText(input);
   const stamp = new Date().toISOString().slice(0, 10);

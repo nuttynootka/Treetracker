@@ -169,3 +169,7 @@ input, select, textarea {
 .muted-line { font-size: 15px; margin: var(--s2) 0; }
 .mono-pre { white-space: pre-wrap; font-family: var(--font-body); font-size: 14px; line-height: 1.5; padding: var(--s4); }
 .save-error { position: sticky; top: 0; z-index: 25; max-width: 480px; margin: 0 auto var(--s4); }
+.archived { margin-top: var(--s4); }
+.archived summary { list-style: none; display: block; text-align: center; margin-bottom: var(--s4); }
+.archived summary::-webkit-details-marker { display: none; }
+.plan-name { font-size: 18px; }

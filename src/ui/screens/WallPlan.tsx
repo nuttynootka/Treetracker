@@ -6,12 +6,14 @@ import { courseHeight, generateRows, stackHeight } from '../../core/wall';
 import type { PlanVersion, WallSettings } from '../../core/types';
 import { useApp } from '../../store/app-state';
 import { Banner, Button, NumberField, Screen, Sheet } from '../components';
-import { dateText, fmtIn, sizeLabel } from '../format';
+import { fmtIn, sizeLabel } from '../format';
+import { navigate } from '../router';
+import { NameSheet } from './NameSheet';
 
 const CLASSES = [28.3, 25.2, 18.9, 15.8, 12.6];
 type Side = 'exterior' | 'interior';
 
-function courseText(courses: number[]) {
+export function courseText(courses: number[]) {
   const groups: [number, number][] = [];
   for (const c of courses) {
     const last = groups[groups.length - 1];
@@ -35,7 +37,7 @@ function CoursesCard({ plan, side }: { plan: PlanVersion; side: Side }) {
 
 type Compared = CandidatePlan & { cmp: ReturnType<typeof comparePlan> };
 
-function CandidateCard({ c, onAccept, onEdit, onDismiss }: { c: Compared; onAccept: () => void; onEdit: () => void; onDismiss: () => void }) {
+function CandidateCard({ c, onAccept, onSave, onEdit, onDismiss }: { c: Compared; onAccept: () => void; onSave: () => void; onEdit: () => void; onDismiss: () => void }) {
   const [confirm, setConfirm] = useState(false);
   const t = (n: number | null) => (n === null ? 'cannot finish' : `about ${n}`);
   return (
@@ -48,7 +50,7 @@ function CandidateCard({ c, onAccept, onEdit, onDismiss }: { c: Compared; onAcce
       <p class="muted-line secondary">{c.rows.map((r) => `${r.quantity} × ${sizeLabel(r.lengthFt, r.minCirc)}`).join('; ')}</p>
       {confirm ? (
         <div class="stack">
-          <p class="label">Use this plan? Logs needed will be rebuilt from it. Hand edits to the current plan's rows will not carry over. You can undo this.</p>
+          <p class="label">Use this plan? Logs needed will be rebuilt from it. Hand edits to the current plan's rows will not carry over. You can switch back on the Plans screen.</p>
           <div class="row-buttons">
             <Button variant="primary" onClick={onAccept}>Yes, use this plan</Button>
             <Button onClick={() => setConfirm(false)}>Cancel</Button>
@@ -57,6 +59,7 @@ function CandidateCard({ c, onAccept, onEdit, onDismiss }: { c: Compared; onAcce
       ) : (
         <div class="row-buttons">
           <Button variant="primary" onClick={() => setConfirm(true)}>Accept</Button>
+          <Button onClick={onSave}>Save as plan</Button>
           <Button onClick={onEdit}>Edit</Button>
           <Button onClick={onDismiss}>Dismiss</Button>
         </div>
@@ -137,7 +140,7 @@ export function WallPlan() {
   const [msg, setMsg] = useState('');
   const [courseError, setCourseError] = useState('');
   const accepting = useRef(false); // blocks a second tap while the first accept is saving
-  const vOf = (id: string | undefined) => (id ? d.versionOf.get(id) : undefined);
+  const [saving, setSaving] = useState<Compared | null>(null);
   const allowedNow = allowed ?? supplyableClasses(d.logs, app.rec, CLASSES);
 
   const build = (sides: { side: Side; courses?: number[] }[]) => {
@@ -156,10 +159,10 @@ export function WallPlan() {
     }, 30);
   };
 
-  const prev = d.plans[d.plans.findIndex((p) => p.id === plan.id) - 1];
   return (
     <Screen title="Wall plan">
-      <p class="muted-line">Version {vOf(plan.id)}{plan.note ? ` · ${plan.note}` : ''}. The logs needed list is built from these courses.</p>
+      <p class="muted-line">Plan in use: <strong>{d.planNames.get(plan.id)}</strong>{plan.note ? ` · ${plan.note}` : ''}. The logs needed list is built from these courses.</p>
+      <Button wide onClick={() => navigate('/plans')}>All saved plans</Button>
       <CoursesCard plan={plan} side="exterior" />
       <CoursesCard plan={plan} side="interior" />
 
@@ -185,6 +188,7 @@ export function WallPlan() {
       {cands?.map((c, i) => (
         <CandidateCard key={`${c.side}-${c.courses.join()}`} c={c}
           onDismiss={() => setCands(cands.filter((_, j) => j !== i))}
+          onSave={() => setSaving(c)}
           onEdit={() => setEditing({ side: c.side, text: c.courses.join(', ') })}
           onAccept={async () => {
             if (accepting.current) return;
@@ -193,23 +197,12 @@ export function WallPlan() {
             accepting.current = false;
             if (!ok) return;
             setCands(null);
-            setMsg(`Now using version ${d.plans.length + 1}.`);
+            setMsg('Now using the new plan. It is on the Plans screen.');
           }} />
       ))}
       {msg && <p class="label" role="status">{msg}</p>}
 
-      <h2>Versions</h2>
-      <div class="list">
-        {d.plans.map((p) => (
-          <div key={p.id} class="list-row raised"><span class="row-main"><span class="row-title">Version {vOf(p.id)}{p.id === plan.id ? ' (in use)' : ''}</span>
-            <span class="row-detail secondary">{p.note}{p.createdAt ? ` · ${dateText(p.createdAt)}` : ''}</span></span></div>
-        ))}
-      </div>
       <div class="stack" style={{ marginTop: '12px' }}>
-        <Button wide disabled={!prev} onClick={async () => {
-          await app.run((recs) => app.actions.undoPlan(recs));
-          setMsg(prev ? `Back to version ${vOf(prev.id)}.` : '');
-        }}>Undo: go back to version {vOf(prev?.id) ?? '—'}</Button>
         <Button wide onClick={() => setWalls(true)}>Edit walls</Button>
       </div>
 
@@ -237,6 +230,13 @@ export function WallPlan() {
         </Sheet>
       )}
       {walls && <WallEditor plan={plan} onClose={() => setWalls(false)} />}
+      {saving && (
+        <NameSheet title="Save as plan" saveLabel="Save plan" onClose={() => setSaving(null)}
+          initial={`${saving.side === 'exterior' ? 'Exterior' : 'Interior'} ${courseText(saving.courses)}`}
+          onSave={async (name) => {
+            if (await app.run((recs) => app.actions.saveCandidate(saving, name, recs))) setMsg(`Saved "${name}" on the Plans screen.`);
+          }} />
+      )}
     </Screen>
   );
 }

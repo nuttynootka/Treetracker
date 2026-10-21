@@ -8,7 +8,7 @@ export interface ReportInput {
   rec: Recommendation | null;
   trees: Tree[];
   generatedAt: number;
-  planVersion: number;
+  planName: string;
 }
 
 const keyText = (key: string) => {
@@ -44,7 +44,7 @@ export function reportText(r: ReportInput): string {
   const out: string[] = [];
   out.push('TreeTracker report');
   out.push(new Date(r.generatedAt).toLocaleString());
-  out.push(`Plan version ${r.planVersion}`);
+  out.push(`Wall plan: ${r.planName}`);
   out.push('');
   out.push('Logs we have');
   const groups = groupLogs(r.logs);
