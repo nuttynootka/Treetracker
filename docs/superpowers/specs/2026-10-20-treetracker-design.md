@@ -231,3 +231,23 @@ Everything reachable within 2 taps of Main. Portrait, 360–412 dp wide.
 - The taper prior, the wall model's course heights and the benchmark are model assumptions, not measurements. The app shows estimates as estimates.
 - Claude cannot test on a real phone. Stage 1's airplane-mode check and stage 8 depend on the owner.
 - IndexedDB data is lost if the app's data is cleared or the app is uninstalled. Export is the backup.
+
+## 13. Saved plans and "Plan from my logs" (added 2026-10-21)
+
+Owner decisions: sizes shown in circumference only; row minimums 18.9 in around (6 in diameter) for exterior rows and 12.6 in around (4 in diameter) for interior rows in a plan built from logs; course count closest to 84 in, but if that is under 82 in add one course even if it goes over 88.5 in; plan files can be exported and imported.
+
+### 13.1 Plan from my logs
+- Available when more than 40 logs are recorded on Logs cut (from trees and by hand, each log counted by quantity).
+- Exterior average = mean small-end circumference of the 20 largest logs; interior average = mean of the 20 smallest. Each rounded to 0.1 in.
+- Course height = average ÷ π (or the per-class course height if one is set for that exact value). Courses n = the whole number whose total height is closest to the target (84 in); if n × height is below target − toleranceBelow (82 in), use n + 1. At least 1 course.
+- Exterior courses are n copies of the exterior average, interior likewise. Rows are generated with the usual wall model, but each side's rows require the side's row minimum (exterior 18.9 in, interior 12.6 in) instead of the course circumference. The plan stores these as `rowMinimums`.
+- Preview shows the averages, courses and heights per side (flagging when a course was added or the height is outside 82–88.5 in), the rows, change in pieces and linear feet, trees still needed before and after, and logs already cut that still count. Nothing changes until Save as plan.
+
+### 13.2 Saved plans
+- Every plan version is a saved plan. New fields: `name` (seed plan: "Starting plan"), `archived`, and `rowMinimums` ({exterior?, interior?}, per side; absent means rows require the course circumference). The active-plan pointer also records `previousPlanId`.
+- Plans screen (#/plans, button on Main): list of plans with name, date and an "In use" mark; per plan Use this plan, Rename, Export file, Archive (Unarchive in the folded Archived section), Delete (with confirmation). The plan in use cannot be archived or deleted. Buttons at the top: Plan from my logs, Import plan file, Switch back to <previous plan>.
+- Use this plan rebuilds logs needed from that plan (same as accepting). Switch back uses `previousPlanId`.
+- Plan file: `{ format: 'treetracker-plan', version: 1, exportedAt, plan }`, named `treetracker-plan-<name>-<date>.json`, sent with the share sheet. Import validates the plan record; if a plan with the same courses, wall settings and row minimums already exists (not deleted), it says so and adds nothing; otherwise it adds a copy with a new id and the next version number, not archived and not in use.
+- Wall plan screen: candidate cards gain Save as plan (saves without using it). The version list and Undo move to the Plans screen. Accepting or editing walls still creates and uses a new plan.
+- When one side of a plan with row minimums is replaced by a candidate, that side's minimum is dropped and the other side's is kept.
+- Logs needed, Reports and Wall plan show the plan's name instead of a version number.
