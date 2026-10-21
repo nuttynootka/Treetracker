@@ -114,3 +114,35 @@ describe('the plans list', () => {
     expect(plans(after)[2].id).not.toBe('from-file');
   });
 });
+
+describe('two phones changing plans', () => {
+  it('keeps the plan in use when the other phone deleted it, and restores it', () => {
+    let tt = 5000;
+    const a = createActions(new Clock('A', () => tt++), { id: 'A' }, () => tt++);
+    const b = createActions(new Clock('B', () => tt++), { id: 'B' }, () => tt++);
+    let base = seedRecords();
+    const cand = candidatePlans('exterior', [25.2], deriveState(base).plan)[0];
+    base = apply(base, a.saveCandidate(cand, 'X', base));
+    const x = plans(base)[1];
+    const phoneA = apply(base, a.usePlan(x.id, base)); // A switches to X
+    const phoneB = apply(base, b.deletePlan(x, base)); // B, not yet synced, deletes X
+    const merged = apply(phoneA, phoneB.filter((r) => r.id === x.id || (r.type === 'need' && r.planVersionId === x.id)));
+    const d = deriveState(merged);
+    expect(d.plan.id).toBe(x.id);
+    expect(d.activePlanDeleted).toBe(true);
+    expect(d.totals.needed).toBe(77 + 68);
+    const repaired = apply(merged, a.repairActivePlan(merged));
+    const r = deriveState(repaired);
+    expect(r.activePlanDeleted).toBe(false);
+    expect(r.plans.map((p) => p.id)).toContain(x.id);
+    expect(r.totals.needed).toBe(77 + 68);
+  });
+
+  it('rebuilds the rows of the plan in use if they are missing', () => {
+    let r = seedRecords();
+    r = r.map((x) => (x.type === 'need' ? { ...x, deleted: true } : x));
+    expect(deriveState(r).totals.needed).toBe(0);
+    r = apply(r, actions.usePlan('plan-v1', r));
+    expect(deriveState(r).totals.needed).toBe(138);
+  });
+});

@@ -24,6 +24,13 @@ describe('plan files', () => {
     expect(planFileName('From my logs!', Date.UTC(2026, 9, 21, 9, 0))).toMatch(/^treetracker-plan-from-my-logs-2026-10-21\.json$/));
   it('explains when given a sync file instead', () =>
     expect(() => parsePlanFile(JSON.stringify(buildExport([], { id: 'a', name: 'A' }, 1)))).toThrow(/sync file.*Sync screen/));
+  it('refuses a plan with damaged wall measurements or no courses', () => {
+    const bad = (plan: object) => JSON.stringify({ ...buildPlanFile(v1(), 1), plan: { ...v1(), ...plan } });
+    expect(() => parsePlanFile(bad({ wall: {} }))).toThrow(/damaged/);
+    expect(() => parsePlanFile(bad({ wall: { ...v1().wall, exteriorWalls: [{ name: 'W1' }] } }))).toThrow(/damaged/);
+    expect(() => parsePlanFile(bad({ exteriorCourses: [] }))).toThrow(/damaged/);
+    expect(() => parsePlanFile(bad({ rowMinimums: { exterior: -1 } }))).toThrow(/damaged/);
+  });
   it('refuses text that is not a plan file', () => {
     expect(() => parsePlanFile('{')).toThrow(SyncError);
     expect(() => parsePlanFile('{"format":"treetracker-plan","version":1,"plan":{"id":"p"}}')).toThrow(/damaged/);

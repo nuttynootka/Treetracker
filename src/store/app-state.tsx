@@ -53,6 +53,7 @@ export function AppStateProvider({ children, fallback }: { children: ComponentCh
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [planNotice, setPlanNotice] = useState<string | null>(null);
   const worker = useRef<Worker | null>(null);
   const seq = useRef(0);
   const timer = useRef<number | undefined>(undefined);
@@ -89,6 +90,17 @@ export function AppStateProvider({ children, fallback }: { children: ComponentCh
     }, 150);
   }, [derived]);
 
+  // The plan in use was deleted on the other phone: keep it here, because it is still in use, and say so.
+  useEffect(() => {
+    if (!repo || !records || !derived?.activePlanDeleted) return;
+    const name = derived.planNames.get(derived.plan.id) ?? 'the plan in use';
+    const fix = actions.repairActivePlan(records);
+    repo.put(fix).then(async () => {
+      setRecords(await repo.all());
+      setPlanNotice(`"${name}" was deleted on the other phone, but it is still in use on this phone, so it was kept. To remove it, switch to another plan first, then delete it.`);
+    }).catch((e) => setSaveError(e instanceof Error ? e.message : String(e)));
+  }, [derived, repo]);
+
   if (error) return <p role="alert">TreeTracker could not open its storage: {error}. Restart the app; if this keeps happening, export a sync file from the other phone as a backup.</p>;
   if (!repo || !records || !derived) return <>{fallback}</>;
 
@@ -112,7 +124,16 @@ export function AppStateProvider({ children, fallback }: { children: ComponentCh
     shortfall,
     busy,
     actions,
-    run: (fn) => save(fn(records, derived)),
+    run: async (fn) => {
+      let changed: AnyRecord[];
+      try {
+        changed = fn(records, derived);
+      } catch (e) {
+        setSaveError(e instanceof Error ? e.message : String(e));
+        return false;
+      }
+      return save(changed);
+    },
     async importText(text) {
       const file = parseSyncFile(text);
       const res = mergeRecords(records, file.records);
@@ -135,6 +156,13 @@ export function AppStateProvider({ children, fallback }: { children: ComponentCh
             <button type="button" class="btn" onClick={() => setSaveError(null)}>Dismiss</button>
             <button type="button" class="btn" onClick={() => { setSaveError(null); location.hash = '/sync'; }}>Open Sync</button>
           </div>
+        </div>
+      )}
+      {planNotice && (
+        <div class="banner raised save-error" role="alert">
+          <strong>Plan kept</strong>
+          <div class="banner-body">{planNotice}</div>
+          <div class="row-buttons"><button type="button" class="btn" onClick={() => setPlanNotice(null)}>OK</button></div>
         </div>
       )}
       {children}

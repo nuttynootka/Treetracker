@@ -14,6 +14,8 @@ export interface Derived {
   plan: PlanVersion;
   /** Plan versions in a fixed order every phone agrees on. */
   plans: PlanVersion[];
+  /** True when the plan in use was deleted (on the other phone); it stays in use until repaired. */
+  activePlanDeleted: boolean;
   /** The number shown for each plan: its place in `plans`, so two phones that both made a "version 2" still show 2 and 3. */
   versionOf: Map<string, number>;
   /** Display name of every plan, by id. */
@@ -30,8 +32,10 @@ export interface Derived {
 export function deriveState(records: AnyRecord[]): Derived {
   const settings = records.find((r): r is Settings => r.type === 'settings')!;
   const active = records.find((r): r is ActivePlan => r.type === 'active')!;
+  const target = records.find((r): r is PlanVersion => r.type === 'plan' && r.id === active.planVersionId);
+  const activePlanDeleted = !!target?.deleted;
   const plans = records
-    .filter((r): r is PlanVersion => r.type === 'plan' && !r.deleted)
+    .filter((r): r is PlanVersion => r.type === 'plan' && (!r.deleted || r.id === active.planVersionId))
     .sort((a, b) => a.version - b.version || a.createdAt - b.createdAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   const versionOf = new Map(plans.map((p, i) => [p.id, i + 1]));
   const planNames = new Map(plans.map((p, i) => [p.id, planName(p, i + 1)]));
@@ -52,6 +56,7 @@ export function deriveState(records: AnyRecord[]): Derived {
     settings,
     plan,
     plans,
+    activePlanDeleted,
     versionOf,
     planNames,
     activeRows,

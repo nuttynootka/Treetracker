@@ -17,6 +17,20 @@ const isStr = (v: unknown) => typeof v === 'string';
 const nums = (r: Record<string, unknown>, keys: string[]) => keys.every((k) => isNum(r[k]));
 const numList = (v: unknown) => Array.isArray(v) && v.every(isNum);
 
+function isValidWall(x: unknown): boolean {
+  if (!x || typeof x !== 'object') return false;
+  const w = x as Record<string, unknown>;
+  const heights = w.courseHeightIn as Record<string, unknown> | undefined;
+  return nums(w, ['postWidthIn', 'tenonIn', 'exteriorHeightIn', 'interiorHeightIn', 'toleranceBelowIn', 'toleranceAboveIn']) &&
+    !!heights && typeof heights === 'object' && Object.values(heights).every((v) => isNum(v) && (v as number) > 0) &&
+    Array.isArray(w.exteriorWalls) &&
+    (w.exteriorWalls as unknown[]).every((e) => {
+      const o = e as Record<string, unknown> | null;
+      return !!o && isStr(o.name) && isNum(o.centerlineIn) && typeof o.hasLogs === 'boolean';
+    }) &&
+    numList(w.interiorPiecesIn) && (w.interiorPiecesIn as number[]).every((p) => p > 0);
+}
+
 /** True when a record has every field its type needs, so a bad file can be refused before anything changes. */
 export function isValidRecord(x: unknown): boolean {
   if (!x || typeof x !== 'object') return false;
@@ -32,11 +46,12 @@ export function isValidRecord(x: unknown): boolean {
       return nums(r, ['lengthFt', 'minCirc', 'quantity']) && (r.planVersionId === null || isStr(r.planVersionId));
     case 'plan': {
       const m = r.rowMinimums as Record<string, unknown> | undefined;
-      return nums(r, ['version', 'createdAt']) && numList(r.exteriorCourses) && numList(r.interiorCourses) &&
-        !!r.wall && typeof r.wall === 'object' &&
+      const courses = (v: unknown) => numList(v) && (v as number[]).length > 0 && (v as number[]).every((c) => c > 0);
+      return nums(r, ['version', 'createdAt']) && courses(r.exteriorCourses) && courses(r.interiorCourses) &&
+        isValidWall(r.wall) &&
         (r.name === undefined || isStr(r.name)) &&
         (r.archived === undefined || typeof r.archived === 'boolean') &&
-        (m === undefined || (typeof m === 'object' && m !== null && Object.values(m).every((v) => v === undefined || isNum(v))));
+        (m === undefined || (typeof m === 'object' && m !== null && Object.values(m).every((v) => v === undefined || (isNum(v) && (v as number) > 0))));
     }
     case 'active':
       return isStr(r.planVersionId) && (r.previousPlanId === undefined || r.previousPlanId === null || isStr(r.previousPlanId));

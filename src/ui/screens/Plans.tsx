@@ -55,14 +55,18 @@ function PlanCard({ plan, name, inUse, onMsg }: { plan: PlanVersion; name: strin
   const app = useApp();
   const [renaming, setRenaming] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmUse, setConfirmUse] = useState(false);
   const busy = useRef(false);
   const act = async (fn: Parameters<typeof app.run>[0], done: string) => {
     if (busy.current) return;
     busy.current = true;
-    const ok = await app.run(fn);
-    busy.current = false;
-    if (ok) onMsg(done);
+    try {
+      if (await app.run(fn)) onMsg(done);
+    } finally {
+      busy.current = false;
+    }
   };
+  const inUseName = app.derived.planNames.get(app.derived.plan.id);
   return (
     <div class={`card raised${inUse ? ' row-done' : ''}`} data-testid="plan-card">
       <div class="row-buttons" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
@@ -72,7 +76,15 @@ function PlanCard({ plan, name, inUse, onMsg }: { plan: PlanVersion; name: strin
       <p class="muted-line secondary">{plan.createdAt ? dateText(plan.createdAt) : 'Built in'}{plan.note ? ` · ${plan.note}` : ''}</p>
       <p class="muted-line">Exterior: {courseText(plan.exteriorCourses)}</p>
       <p class="muted-line">Interior: {courseText(plan.interiorCourses)}</p>
-      {confirmDelete ? (
+      {confirmUse ? (
+        <div class="stack">
+          <p class="label">Use "{name}"? Logs needed will be rebuilt from it. Any hand edits to the rows of "{inUseName}" will not carry over.</p>
+          <div class="row-buttons">
+            <Button variant="primary" onClick={async () => { await act((recs) => app.actions.usePlan(plan.id, recs), `Now using "${name}".`); setConfirmUse(false); }}>Yes, use it</Button>
+            <Button onClick={() => setConfirmUse(false)}>Cancel</Button>
+          </div>
+        </div>
+      ) : confirmDelete ? (
         <div class="stack">
           <p class="label">Delete "{name}"? It is removed from both phones at the next sync.</p>
           <div class="row-buttons">
@@ -82,7 +94,7 @@ function PlanCard({ plan, name, inUse, onMsg }: { plan: PlanVersion; name: strin
         </div>
       ) : (
         <div class="row-buttons">
-          {!inUse && <Button variant="primary" onClick={() => act((recs) => app.actions.usePlan(plan.id, recs), `Now using "${name}".`)}>Use this plan</Button>}
+          {!inUse && <Button variant="primary" onClick={() => setConfirmUse(true)}>Use this plan</Button>}
           <Button onClick={() => setRenaming(true)}>Rename</Button>
           <Button onClick={async () => {
             const now = Date.now();
@@ -114,6 +126,8 @@ export function Plans() {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [working, setWorking] = useState(false);
   const [naming, setNaming] = useState(false);
+  const [confirmBack, setConfirmBack] = useState(false);
+  const switching = useRef(false);
   const logCount = d.logs.reduce((a, l) => a + l.quantity, 0);
   const active = app.records.find((r): r is ActivePlan => r.type === 'active');
   const prev = d.plans.find((p) => p.id === active?.previousPlanId && p.id !== d.plan.id);
@@ -155,9 +169,27 @@ export function Plans() {
             setMsg(e instanceof SyncError ? e.message : `Import failed: ${String(e)}`);
           }
         }}>Import plan file</Button>
-        <Button wide disabled={!prev} onClick={async () => {
-          if (prev && (await app.run((recs) => app.actions.switchBack(recs)))) setMsg(`Now using "${d.planNames.get(prev.id)}".`);
-        }}>{prev ? `Switch back to "${d.planNames.get(prev.id)}"` : 'Switch back (no earlier plan)'}</Button>
+        <Button wide disabled={!prev} onClick={() => setConfirmBack(true)}>
+          {prev ? `Switch back to "${d.planNames.get(prev.id)}"` : 'Switch back (no earlier plan)'}
+        </Button>
+        {confirmBack && prev && (
+          <div class="card raised stack">
+            <p class="label">Switch back to "{d.planNames.get(prev.id)}"? Logs needed will be rebuilt from it. Any hand edits to the rows of "{d.planNames.get(d.plan.id)}" will not carry over.</p>
+            <div class="row-buttons">
+              <Button variant="primary" onClick={async () => {
+                if (switching.current) return;
+                switching.current = true;
+                try {
+                  if (await app.run((recs) => app.actions.switchBack(recs))) setMsg(`Now using "${d.planNames.get(prev.id)}".`);
+                } finally {
+                  switching.current = false;
+                  setConfirmBack(false);
+                }
+              }}>Yes, switch back</Button>
+              <Button onClick={() => setConfirmBack(false)}>Cancel</Button>
+            </div>
+          </div>
+        )}
       </div>
       {msg && <p class="label card raised" role="status" data-testid="plans-msg">{msg}</p>}
 

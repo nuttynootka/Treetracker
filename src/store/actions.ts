@@ -41,7 +41,11 @@ export function createActions(clock: Clock, device: { id: string }, now: () => n
 
   function activate(target: PlanVersion, records: AnyRecord[]): AnyRecord[] {
     const d = deriveState(records);
-    if (d.plan.id === target.id) return [];
+    if (d.plan.id === target.id) {
+      // Already in use: only rebuild its rows if they are missing.
+      const hasRows = records.some((r) => r.type === 'need' && !r.deleted && r.planVersionId === target.id);
+      return hasRows ? [] : rowsFor(target, records);
+    }
     const oldRows = records.filter((r): r is NeedRow => r.type === 'need' && !r.deleted && r.planVersionId === d.plan.id);
     const active = records.find((r): r is ActivePlan => r.type === 'active')!;
     const unarchived = target.archived ? [stamp({ ...target, archived: false })] : [];
@@ -194,6 +198,15 @@ export function createActions(clock: Clock, device: { id: string }, now: () => n
     setArchived(plan: PlanVersion, archived: boolean, records: AnyRecord[]): AnyRecord[] {
       if (archived && deriveState(records).plan.id === plan.id) return [];
       return [stamp({ ...plan, archived })];
+    },
+
+    /** The plan in use was deleted on the other phone: keep it, and its rows, because it is still in use here. */
+    repairActivePlan(records: AnyRecord[]): AnyRecord[] {
+      const d = deriveState(records);
+      if (!d.activePlanDeleted) return [];
+      const plan = { ...d.plan, deleted: false };
+      const hasRows = records.some((r) => r.type === 'need' && !r.deleted && r.planVersionId === plan.id);
+      return [stamp(plan), ...(hasRows ? [] : rowsFor(plan, records))];
     },
 
     deletePlan(plan: PlanVersion, records: AnyRecord[]): AnyRecord[] {

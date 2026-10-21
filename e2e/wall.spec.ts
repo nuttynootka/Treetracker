@@ -15,6 +15,7 @@ test('accept 11 courses of 25.2 in, then undo', async ({ page }) => {
 
   await page.goto('/#/plans');
   await page.getByRole('button', { name: 'Switch back to "Starting plan"' }).click();
+  await page.getByRole('button', { name: 'Yes, switch back' }).click();
   await expect(page.getByTestId('plans-msg')).toHaveText('Now using "Starting plan".');
   await page.goto('/#/needed');
   await expect(page.getByRole('button', { name: /16 ft · 28\.3 in around.*need 8/ })).toBeVisible();

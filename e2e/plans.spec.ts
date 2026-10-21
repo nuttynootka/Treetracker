@@ -38,12 +38,14 @@ test('save the plan from my logs, use it, and switch back', async ({ page }) => 
   await saveLogsPlan(page, 'Big and small');
   await expect(card(page, 'Big and small')).not.toContainText('In use');
   await card(page, 'Big and small').getByRole('button', { name: 'Use this plan' }).click();
+  await card(page, 'Big and small').getByRole('button', { name: 'Yes, use it' }).click();
   await expect(card(page, 'Big and small')).toContainText('In use');
   await page.goto('/#/needed');
   await expect(page.getByText('Wall plan: Big and small.')).toBeVisible();
   await expect(page.getByRole('button', { name: /16 ft · 18\.9 in around/ })).toBeVisible();
   await page.goto('/#/plans');
   await page.getByRole('button', { name: 'Switch back to "Starting plan"' }).click();
+  await page.getByRole('button', { name: 'Yes, switch back' }).click();
   await expect(card(page, 'Starting plan')).toContainText('In use');
 });
 
