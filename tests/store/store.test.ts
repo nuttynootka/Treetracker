@@ -106,7 +106,7 @@ describe('actions and derived totals', () => {
     expect(d.totals.needed).toBe(77 + 68);
     expect(d.logs.reduce((a, l) => a + l.quantity, 0)).toBe(8);
     expect(d.rowViews.find((v) => v.row.lengthFt === 16 && v.row.minCirc === 25.2)!.have).toBe(8);
-    r = apply(r, actions.undoPlan(r));
+    r = apply(r, actions.switchBack(r));
     const u = deriveState(r);
     expect(u.plan.version).toBe(1);
     expect(u.totals.needed).toBe(138);
@@ -126,8 +126,8 @@ describe('actions and derived totals', () => {
     const d = deriveState(merged);
     expect(d.plans.map((p) => d.versionOf.get(p.id))).toEqual([1, 2, 3]);
     expect(d.versionOf.get(d.plan.id)).toBe(3);
-    const back = deriveState(apply(merged, a.undoPlan(merged)));
-    expect(back.versionOf.get(back.plan.id)).toBe(2);
+    const back = deriveState(apply(merged, a.switchBack(merged)));
+    expect(back.plan.id).toBe('plan-v1'); // switch back returns to the plan used before, not the previous number
   });
 
   it('editing a tree recomputes its waist estimate but keeps its plan', () => {

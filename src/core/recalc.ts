@@ -4,7 +4,8 @@ import { usableTrees } from './predict';
 import type { Recommendation } from './recommend';
 import { courseHeight, generateRows, stackHeight } from './wall';
 import type { GeneratedRow } from './wall';
-import type { LogCut, NeedRow, PlanVersion, SettingsValues, Tree } from './types';
+import type { LogCut, NeedRow, PlanVersion, RowMinimums, SettingsValues, Tree } from './types';
+import type { LogsPlan } from './logsplan';
 
 export interface ShortfallSignal {
   kind: 'unfillable' | 'lowYield';
@@ -56,8 +57,8 @@ export interface CandidatePlan {
   rows: GeneratedRow[];
 }
 
-const sideRows = (side: 'exterior' | 'interior', courses: number[], plan: PlanVersion) =>
-  side === 'exterior' ? generateRows(courses, [], plan.wall) : generateRows([], courses, plan.wall);
+const sideRows = (side: 'exterior' | 'interior', courses: number[], plan: PlanVersion, minimums: RowMinimums = {}) =>
+  side === 'exterior' ? generateRows(courses, [], plan.wall, minimums) : generateRows([], courses, plan.wall, minimums);
 const pieceCount = (rows: GeneratedRow[]) => rows.reduce((a, r) => a + r.quantity, 0);
 const feetCount = (rows: GeneratedRow[]) => rows.reduce((a, r) => a + r.quantity * r.lengthFt, 0);
 
@@ -119,23 +120,20 @@ function treesNeeded(rows: GeneratedRow[], logs: LogCut[], trees: Tree[], s: Set
   return { rec: recommend(remainingPlannerRows(need, m.have), trees, s), have: [...m.have.values()].reduce((a, b) => a + b, 0) };
 }
 
-/**
- * Compare a candidate with the rows in use now. `rows` are the active needs rows, including hand edits;
- * rows added by hand (no plan version) carry over to the new plan, while generated rows are rebuilt.
- */
-export function comparePlan(
-  current: PlanVersion,
-  cand: CandidatePlan,
-  ctx: { logs: LogCut[]; trees: Tree[]; s: SettingsValues; rows: NeedRow[] },
-) {
-  const live = ctx.rows.filter((r) => !r.deleted);
-  const before: GeneratedRow[] = live.map((r) => ({ lengthFt: r.lengthFt, minCirc: r.minCirc, quantity: r.quantity }));
-  const handAdded = live.filter((r) => r.planVersionId === null).map((r) => ({ lengthFt: r.lengthFt, minCirc: r.minCirc, quantity: r.quantity }));
-  const after = [
-    ...cand.rows,
-    ...sideRows(cand.side === 'exterior' ? 'interior' : 'exterior', cand.side === 'exterior' ? current.interiorCourses : current.exteriorCourses, current),
-    ...handAdded,
-  ];
+interface CompareContext {
+  logs: LogCut[];
+  trees: Tree[];
+  s: SettingsValues;
+  /** The active needs rows, including hand edits. */
+  rows: NeedRow[];
+}
+
+/** Rows added by hand (no plan version) carry over to any new plan; generated rows are rebuilt. */
+const handAdded = (rows: NeedRow[]): GeneratedRow[] =>
+  rows.filter((r) => !r.deleted && r.planVersionId === null).map((r) => ({ lengthFt: r.lengthFt, minCirc: r.minCirc, quantity: r.quantity }));
+
+function compareRows(after: GeneratedRow[], ctx: CompareContext) {
+  const before: GeneratedRow[] = ctx.rows.filter((r) => !r.deleted).map((r) => ({ lengthFt: r.lengthFt, minCirc: r.minCirc, quantity: r.quantity }));
   const b = treesNeeded(before, ctx.logs, ctx.trees, ctx.s);
   const a = treesNeeded(after, ctx.logs, ctx.trees, ctx.s);
   return {
@@ -146,4 +144,21 @@ export function comparePlan(
     logsStillCounting: a.have,
     logsTotal: ctx.logs.filter((l) => !l.deleted).reduce((t, l) => t + l.quantity, 0),
   };
+}
+
+/** Compare a one-side candidate with the rows in use now. */
+export function comparePlan(current: PlanVersion, cand: CandidatePlan, ctx: CompareContext) {
+  const other = cand.side === 'exterior' ? 'interior' : 'exterior';
+  const keep: RowMinimums = current.rowMinimums?.[other] !== undefined ? { [other]: current.rowMinimums[other] } : {};
+  const after = [
+    ...cand.rows,
+    ...sideRows(other, other === 'interior' ? current.interiorCourses : current.exteriorCourses, current, keep),
+    ...handAdded(ctx.rows),
+  ];
+  return compareRows(after, ctx);
+}
+
+/** Compare the plan built from logs with the rows in use now. */
+export function comparePlanFromLogs(lp: Extract<LogsPlan, { ok: true }>, ctx: CompareContext) {
+  return compareRows([...lp.rows, ...handAdded(ctx.rows)], ctx);
 }

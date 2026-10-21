@@ -7,7 +7,10 @@ import { needRowId } from '../core/seed';
 import { generateRows } from '../core/wall';
 import { round1 } from '../core/num';
 import type { CandidatePlan } from '../core/recalc';
-import type { AnyRecord, Id, LogCut, NeedRow, PlanVersion, SettingsValues, Tree, WallSettings, ActivePlan, Settings } from '../core/types';
+import { samePlan } from '../core/planfile';
+import type { AnyRecord, Id, LogCut, NeedRow, PlanVersion, RowMinimums, SettingsValues, Tree, WallSettings, ActivePlan, Settings } from '../core/types';
+
+type PlanFields = Pick<PlanVersion, 'exteriorCourses' | 'interiorCourses' | 'note'> & { wall?: WallSettings; rowMinimums?: RowMinimums };
 import { deriveState } from './derive';
 
 export interface TreeInput {
@@ -29,7 +32,7 @@ export function createActions(clock: Clock, device: { id: string }, now: () => n
 
   function rowsFor(plan: PlanVersion, records: AnyRecord[]): NeedRow[] {
     const existing = new Map(records.map((r) => [r.id, r]));
-    return generateRows(plan.exteriorCourses, plan.interiorCourses, plan.wall).map((g) => {
+    return generateRows(plan.exteriorCourses, plan.interiorCourses, plan.wall, plan.rowMinimums).map((g) => {
       const id = needRowId(plan.id, g.lengthFt, g.minCirc);
       const prev = existing.get(id) as NeedRow | undefined;
       return stamp({ ...(prev ?? {}), id, type: 'need', deleted: false, ...g, planVersionId: plan.id, manuallyEdited: false } as NeedRow);
@@ -38,19 +41,47 @@ export function createActions(clock: Clock, device: { id: string }, now: () => n
 
   function activate(target: PlanVersion, records: AnyRecord[]): AnyRecord[] {
     const d = deriveState(records);
+    if (d.plan.id === target.id) return [];
     const oldRows = records.filter((r): r is NeedRow => r.type === 'need' && !r.deleted && r.planVersionId === d.plan.id);
     const active = records.find((r): r is ActivePlan => r.type === 'active')!;
-    return [...oldRows.map(tomb), ...rowsFor(target, records), stamp({ ...active, planVersionId: target.id })];
+    const unarchived = target.archived ? [stamp({ ...target, archived: false })] : [];
+    return [...oldRows.map(tomb), ...rowsFor(target, records), ...unarchived, stamp({ ...active, planVersionId: target.id, previousPlanId: d.plan.id })];
   }
 
-  function newVersion(fields: Pick<PlanVersion, 'exteriorCourses' | 'interiorCourses' | 'wall' | 'note'>, records: AnyRecord[]): AnyRecord[] {
+  /** A new plan record, not yet in use. */
+  function makePlan(fields: PlanFields, name: string | undefined, records: AnyRecord[]): PlanVersion {
+    const cur = deriveState(records).plan;
     const version = Math.max(...records.filter((r): r is PlanVersion => r.type === 'plan').map((p) => p.version)) + 1;
-    const plan = stamp<PlanVersion>({
+    const plan: PlanVersion = {
       id: `plan-${crypto.randomUUID()}`, type: 'plan', updatedAt: '', deleted: false, deviceId: device.id,
-      version, ...fields, createdBy: device.id, createdAt: now(),
-    });
+      version, exteriorCourses: [...fields.exteriorCourses], interiorCourses: [...fields.interiorCourses],
+      wall: structuredClone(fields.wall ?? cur.wall), note: fields.note, createdBy: device.id, createdAt: now(), archived: false,
+    };
+    if (name?.trim()) plan.name = name.trim();
+    if (fields.rowMinimums && Object.keys(fields.rowMinimums).length) plan.rowMinimums = { ...fields.rowMinimums };
+    return stamp(plan);
+  }
+
+  function newVersion(fields: PlanFields, records: AnyRecord[], name?: string): AnyRecord[] {
+    const plan = makePlan(fields, name, records);
     return [plan, ...activate(plan, [...records, plan])];
   }
+
+  /** One side replaced by a candidate; the other side, and its row minimum, kept from the plan in use. */
+  function candidateFields(cand: Pick<CandidatePlan, 'side' | 'courses'>, records: AnyRecord[]): PlanFields {
+    const cur = deriveState(records).plan;
+    const rowMinimums: RowMinimums = { ...(cur.rowMinimums ?? {}) };
+    delete rowMinimums[cand.side];
+    return {
+      exteriorCourses: cand.side === 'exterior' ? [...cand.courses] : [...cur.exteriorCourses],
+      interiorCourses: cand.side === 'interior' ? [...cand.courses] : [...cur.interiorCourses],
+      rowMinimums,
+      note: `${cand.side === 'exterior' ? 'Exterior' : 'Interior'} courses changed`,
+    };
+  }
+
+  const planById = (id: Id | null | undefined, records: AnyRecord[]) =>
+    records.find((r): r is PlanVersion => r.type === 'plan' && r.id === id && !r.deleted);
 
   return {
     submitTree(input: TreeInput, records: AnyRecord[]): { tree: Tree; logs: LogCut[] } {
@@ -121,28 +152,66 @@ export function createActions(clock: Clock, device: { id: string }, now: () => n
       ];
     },
 
-    acceptPlan(cand: Pick<CandidatePlan, 'side' | 'courses'>, records: AnyRecord[]): AnyRecord[] {
-      const cur = deriveState(records).plan;
-      return newVersion(
-        {
-          exteriorCourses: cand.side === 'exterior' ? [...cand.courses] : [...cur.exteriorCourses],
-          interiorCourses: cand.side === 'interior' ? [...cand.courses] : [...cur.interiorCourses],
-          wall: structuredClone(cur.wall),
-          note: `${cand.side === 'exterior' ? 'Exterior' : 'Interior'} courses changed`,
-        },
-        records,
-      );
+    acceptPlan(cand: Pick<CandidatePlan, 'side' | 'courses'>, records: AnyRecord[], name?: string): AnyRecord[] {
+      return newVersion(candidateFields(cand, records), records, name);
+    },
+
+    /** Keep a candidate as a saved plan without using it. */
+    saveCandidate(cand: Pick<CandidatePlan, 'side' | 'courses'>, name: string, records: AnyRecord[]): AnyRecord[] {
+      return [makePlan(candidateFields(cand, records), name, records)];
+    },
+
+    /** Save a whole plan (for example the plan from my logs) without using it. */
+    savePlan(fields: PlanFields, name: string, records: AnyRecord[]): AnyRecord[] {
+      return [makePlan(fields, name, records)];
     },
 
     editWalls(wall: WallSettings, records: AnyRecord[]): AnyRecord[] {
       const cur = deriveState(records).plan;
-      return newVersion({ exteriorCourses: [...cur.exteriorCourses], interiorCourses: [...cur.interiorCourses], wall: structuredClone(wall), note: 'Wall measurements changed' }, records);
+      return newVersion(
+        { exteriorCourses: [...cur.exteriorCourses], interiorCourses: [...cur.interiorCourses], rowMinimums: cur.rowMinimums, wall, note: 'Wall measurements changed' },
+        records,
+      );
     },
 
-    undoPlan(records: AnyRecord[]): AnyRecord[] {
-      const d = deriveState(records);
-      const prev = d.plans[d.plans.findIndex((p) => p.id === d.plan.id) - 1];
+    usePlan(planId: Id, records: AnyRecord[]): AnyRecord[] {
+      const target = planById(planId, records);
+      return target ? activate(target, records) : [];
+    },
+
+    /** Go back to the plan used before the current one. */
+    switchBack(records: AnyRecord[]): AnyRecord[] {
+      const active = records.find((r): r is ActivePlan => r.type === 'active')!;
+      const prev = planById(active.previousPlanId, records);
       return prev ? activate(prev, records) : [];
+    },
+
+    renamePlan(plan: PlanVersion, name: string, _records: AnyRecord[]): AnyRecord[] {
+      const n = name.trim();
+      return n ? [stamp({ ...plan, name: n })] : [];
+    },
+
+    setArchived(plan: PlanVersion, archived: boolean, records: AnyRecord[]): AnyRecord[] {
+      if (archived && deriveState(records).plan.id === plan.id) return [];
+      return [stamp({ ...plan, archived })];
+    },
+
+    deletePlan(plan: PlanVersion, records: AnyRecord[]): AnyRecord[] {
+      if (deriveState(records).plan.id === plan.id) return [];
+      const rows = records.filter((r) => r.type === 'need' && !r.deleted && r.planVersionId === plan.id);
+      return [tomb(plan), ...rows.map(tomb)];
+    },
+
+    /** Add a plan from a plan file, unless the same plan is already in the list. Never switches to it. */
+    importPlan(incoming: PlanVersion, records: AnyRecord[]): { changed: AnyRecord[]; duplicateOf: PlanVersion | null } {
+      const existing = records.find((r): r is PlanVersion => r.type === 'plan' && !r.deleted && samePlan(r, incoming));
+      if (existing) return { changed: [], duplicateOf: existing };
+      const plan = makePlan(
+        { exteriorCourses: incoming.exteriorCourses, interiorCourses: incoming.interiorCourses, wall: incoming.wall, rowMinimums: incoming.rowMinimums, note: incoming.note },
+        incoming.name ?? 'Imported plan',
+        records,
+      );
+      return { changed: [plan], duplicateOf: null };
     },
 
     updateSettings(patch: Partial<SettingsValues>, records: AnyRecord[]): AnyRecord[] {
