@@ -23,13 +23,14 @@ function LogsPlanPreview({ p, target, highest, onSave, onClose }: {
   onClose: () => void;
 }) {
   const t = (n: number | null) => (n === null ? 'cannot finish' : `about ${n}`);
-  const side = (label: string, avg: number, courses: number[], height: number, added: boolean, tgt: number, hi: number, min: number) => (
+  const side = (label: string, avg: number, courses: number[], height: number, added: boolean, tgt: number, lowest: number, hi: number, min: number, below: boolean) => (
     <div class="stack">
       <strong>{label}</strong>
       <p class="muted-line">Average of the {label === 'Exterior' ? '20 largest' : '20 smallest'} logs: {fmtIn(avg)} around</p>
       <p class="muted-line">{courses.length} courses stack to {fmtIn(height)} (target {fmtIn(tgt)})</p>
-      {added && <p class="msg msg-warn">One course was added so the wall reaches at least 82 in.</p>}
+      {added && <p class="msg msg-warn">One course was added so the wall reaches at least {fmtIn(lowest)}.</p>}
       {height > hi + 1e-9 && <p class="msg msg-warn">This is over the {fmtIn(hi)} allowed height.</p>}
+      {below && <p class="msg msg-warn">The {label.toLowerCase()} logs average {fmtIn(avg)} around, smaller than the {fmtIn(min)} each {label.toLowerCase()} row needs. Logs that small will not count toward these rows.</p>}
       <p class="muted-line secondary">Every {label.toLowerCase()} row needs at least {fmtIn(min)} around at the small end.</p>
     </div>
   );
@@ -37,8 +38,8 @@ function LogsPlanPreview({ p, target, highest, onSave, onClose }: {
     <div class="card raised-lg" data-testid="logs-plan">
       <h2 style={{ marginTop: 0 }}>Plan from my logs</h2>
       <p class="muted-line secondary">Built from {p.count} logs you have cut. Nothing changes unless you save it and then use it.</p>
-      {side('Exterior', p.exteriorAvg, p.exteriorCourses, p.exteriorHeightIn, p.exteriorAdded, target.exterior, highest.exterior, p.rowMinimums.exterior)}
-      {side('Interior', p.interiorAvg, p.interiorCourses, p.interiorHeightIn, p.interiorAdded, target.interior, highest.interior, p.rowMinimums.interior)}
+      {side('Exterior', p.exteriorAvg, p.exteriorCourses, p.exteriorHeightIn, p.exteriorAdded, target.exterior, p.exteriorLowestIn, highest.exterior, p.rowMinimums.exterior, p.exteriorBelowMinimum)}
+      {side('Interior', p.interiorAvg, p.interiorCourses, p.interiorHeightIn, p.interiorAdded, target.interior, p.interiorLowestIn, highest.interior, p.rowMinimums.interior, p.interiorBelowMinimum)}
       <p class="muted-line">{p.cmp.deltaPieces >= 0 ? '+' : ''}{p.cmp.deltaPieces} pieces, {p.cmp.deltaFeet >= 0 ? '+' : ''}{p.cmp.deltaFeet} ft of log compared with the plan in use</p>
       <p class="muted-line">Trees still needed: {t(p.cmp.treesNeededBefore)} now → {t(p.cmp.treesNeededAfter)}</p>
       <p class="muted-line">{p.cmp.logsStillCounting} of {p.cmp.logsTotal} logs already cut would count</p>
@@ -74,6 +75,12 @@ function PlanCard({ plan, name, inUse, onMsg }: { plan: PlanVersion; name: strin
         {inUse && <span class="tag">In use</span>}
       </div>
       <p class="muted-line secondary">{plan.createdAt ? dateText(plan.createdAt) : 'Built in'}{plan.note ? ` · ${plan.note}` : ''}</p>
+      {inUse && plan.archived && (
+        <div class="stack">
+          <p class="msg msg-warn">Archived on the other phone. It stays in use here.</p>
+          <Button onClick={() => act((recs) => app.actions.setArchived(plan, false, recs), `"${name}" is back in the list.`)}>Unarchive</Button>
+        </div>
+      )}
       <p class="muted-line">Exterior: {courseText(plan.exteriorCourses)}</p>
       <p class="muted-line">Interior: {courseText(plan.interiorCourses)}</p>
       {confirmUse ? (
@@ -164,7 +171,7 @@ export function Plans() {
             });
             if (!ok) return;
             const found = dup as PlanVersion | null;
-            setMsg(found ? `This plan is already in your list as "${d.planNames.get(found.id) ?? found.name}". Nothing was added.` : `Imported "${plan.name ?? 'Imported plan'}". Tap Use this plan to switch to it.`);
+            setMsg(found ? `This plan is already in your list as "${d.planNames.get(found.id) ?? found.name}"${found.archived ? ', in the Archived section' : ''}. Nothing was added.` : `Imported "${plan.name ?? 'Imported plan'}". Tap Use this plan to switch to it.`);
           } catch (e) {
             setMsg(e instanceof SyncError ? e.message : `Import failed: ${String(e)}`);
           }

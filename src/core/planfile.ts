@@ -8,10 +8,11 @@ export interface PlanFile {
   plan: PlanVersion;
 }
 
-export function planName(plan: PlanVersion, number: number): string {
+/** A plan's name; unnamed plans use their stored version number, which never changes. */
+export function planName(plan: PlanVersion): string {
   const n = plan.name?.trim();
   if (n) return n;
-  return plan.id === 'plan-v1' ? 'Starting plan' : `Plan ${number}`;
+  return plan.id === 'plan-v1' ? 'Starting plan' : `Plan ${plan.version}`;
 }
 
 export function buildPlanFile(plan: PlanVersion, now: number): PlanFile {

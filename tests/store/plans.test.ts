@@ -146,3 +146,26 @@ describe('two phones changing plans', () => {
     expect(deriveState(r).totals.needed).toBe(138);
   });
 });
+
+describe('plan names stay put', () => {
+  it('keeps "Plan 3" as "Plan 3" after an earlier unnamed plan is deleted', () => {
+    let r = seedRecords();
+    const cand = candidatePlans('exterior', [25.2], deriveState(r).plan)[0];
+    r = apply(r, actions.acceptPlan(cand, r)); // Plan 2, in use
+    const cand2 = candidatePlans('interior', [18.9, 15.8, 12.6], deriveState(r).plan)[0];
+    r = apply(r, actions.acceptPlan(cand2, r)); // Plan 3, in use
+    const names = () => deriveState(r).plans.map((p) => deriveState(r).planNames.get(p.id));
+    expect(names()).toEqual(['Starting plan', 'Plan 2', 'Plan 3']);
+    r = apply(r, actions.deletePlan(deriveState(r).plans[1], r));
+    expect(names()).toEqual(['Starting plan', 'Plan 3']);
+  });
+
+  it('tells apart two plans that ended up with the same name', () => {
+    let r = seedRecords();
+    const c = candidatePlans('exterior', [25.2, 18.9], deriveState(r).plan);
+    r = apply(r, actions.saveCandidate(c[0], 'Same', r));
+    r = apply(r, actions.saveCandidate(c[1], 'Same', r));
+    const d = deriveState(r);
+    expect(new Set(d.plans.map((p) => d.planNames.get(p.id))).size).toBe(3);
+  });
+});

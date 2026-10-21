@@ -21,6 +21,12 @@ export type LogsPlan =
       interiorHeightIn: number;
       exteriorAdded: boolean;
       interiorAdded: boolean;
+      /** Lowest wall height allowed before a course is added (target − allowed below). */
+      exteriorLowestIn: number;
+      interiorLowestIn: number;
+      /** The average is smaller around than the row minimum, so these logs could not fill the rows. */
+      exteriorBelowMinimum: boolean;
+      interiorBelowMinimum: boolean;
       rowMinimums: Required<RowMinimums>;
       rows: GeneratedRow[];
     };
@@ -46,8 +52,10 @@ export function planFromLogs(logs: LogCut[], plan: PlanVersion): LogsPlan {
   const exteriorAvg = mean(sizes.slice(0, SAMPLE));
   const interiorAvg = mean(sizes.slice(-SAMPLE));
   const w = plan.wall;
-  const ext = courseCount(exteriorAvg, w.exteriorHeightIn, w.exteriorHeightIn - w.toleranceBelowIn, plan);
-  const int = courseCount(interiorAvg, w.interiorHeightIn, w.interiorHeightIn - w.toleranceBelowIn, plan);
+  const exteriorLowestIn = w.exteriorHeightIn - w.toleranceBelowIn;
+  const interiorLowestIn = w.interiorHeightIn - w.toleranceBelowIn;
+  const ext = courseCount(exteriorAvg, w.exteriorHeightIn, exteriorLowestIn, plan);
+  const int = courseCount(interiorAvg, w.interiorHeightIn, interiorLowestIn, plan);
   const exteriorCourses = Array<number>(ext.n).fill(exteriorAvg);
   const interiorCourses = Array<number>(int.n).fill(interiorAvg);
   return {
@@ -61,6 +69,10 @@ export function planFromLogs(logs: LogCut[], plan: PlanVersion): LogsPlan {
     interiorHeightIn: int.height,
     exteriorAdded: ext.added,
     interiorAdded: int.added,
+    exteriorLowestIn,
+    interiorLowestIn,
+    exteriorBelowMinimum: exteriorAvg < LOGS_PLAN_MINIMUMS.exterior,
+    interiorBelowMinimum: interiorAvg < LOGS_PLAN_MINIMUMS.interior,
     rowMinimums: { ...LOGS_PLAN_MINIMUMS },
     rows: generateRows(exteriorCourses, interiorCourses, w, LOGS_PLAN_MINIMUMS),
   };

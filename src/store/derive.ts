@@ -38,7 +38,16 @@ export function deriveState(records: AnyRecord[]): Derived {
     .filter((r): r is PlanVersion => r.type === 'plan' && (!r.deleted || r.id === active.planVersionId))
     .sort((a, b) => a.version - b.version || a.createdAt - b.createdAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   const versionOf = new Map(plans.map((p, i) => [p.id, i + 1]));
-  const planNames = new Map(plans.map((p, i) => [p.id, planName(p, i + 1)]));
+  // Two plans can share a name (for example both phones made a "Plan 2" before syncing); number the repeats.
+  const seen = new Map<string, number>();
+  const planNames = new Map(
+    plans.map((p) => {
+      const base = planName(p);
+      const k = (seen.get(base) ?? 0) + 1;
+      seen.set(base, k);
+      return [p.id, k === 1 ? base : `${base} (${k})`];
+    }),
+  );
   const plan = plans.find((p) => p.id === active.planVersionId) ?? plans[plans.length - 1];
   const activeRows = records
     .filter((r): r is NeedRow => r.type === 'need' && !r.deleted && (r.planVersionId === plan.id || r.planVersionId === null))

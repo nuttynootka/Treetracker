@@ -9,9 +9,9 @@ const v1 = () => seedRecords().find((r) => r.type === 'plan') as PlanVersion;
 describe('plan names', () => {
   it('names the seeded plan "Starting plan"', () => expect(v1().name).toBe('Starting plan'));
   it('falls back for plans without a name', () => {
-    expect(planName({ ...v1(), name: undefined }, 1)).toBe('Starting plan');
-    expect(planName({ ...v1(), id: 'plan-x', name: '  ' }, 4)).toBe('Plan 4');
-    expect(planName({ ...v1(), name: 'Big logs' }, 2)).toBe('Big logs');
+    expect(planName({ ...v1(), name: undefined })).toBe('Starting plan');
+    expect(planName({ ...v1(), id: 'plan-x', name: '  ', version: 4 })).toBe('Plan 4');
+    expect(planName({ ...v1(), name: 'Big logs' })).toBe('Big logs');
   });
 });
 

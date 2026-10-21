@@ -81,6 +81,8 @@ export function parseSyncFile(text: string): SyncFile {
     throw new SyncError('This file could not be read. Choose a TreeTracker sync file.');
   }
   const f = data as Partial<SyncFile>;
+  if ((data as { format?: string } | null)?.format === 'treetracker-plan')
+    throw new SyncError('This is a plan file, not a sync file. Import it on the Plans screen.');
   if (!f || f.format !== 'treetracker-sync') throw new SyncError('This is not a TreeTracker sync file.');
   if (f.version !== 1) throw new SyncError('This sync file comes from a newer version of TreeTracker. Update the app on this phone first.');
   if (!Array.isArray(f.records)) throw new SyncError('This sync file is damaged: it has no records.');

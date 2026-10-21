@@ -88,6 +88,8 @@ describe('parseSyncFile', () => {
     const file = buildExport([...seedRecords(), syntheticTree(), log(8, 26)], { id: 'a', name: 'A' }, 1);
     expect(parseSyncFile(JSON.stringify(file)).records).toHaveLength(seedRecords().length + 2);
   });
+  it('points a plan file to the Plans screen', () =>
+    expect(() => parseSyncFile(JSON.stringify({ format: 'treetracker-plan', version: 1, plan: {} }))).toThrow(/plan file.*Plans screen/));
   it('rejects a newer file version', () =>
     expect(() => parseSyncFile(JSON.stringify({ ...buildExport([], { id: 'a', name: 'A' }, 1), version: 2 }))).toThrow(/newer/));
 });

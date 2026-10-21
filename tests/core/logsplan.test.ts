@@ -44,6 +44,24 @@ describe('planFromLogs', () => {
     expect(r.interiorAdded).toBe(false);
   });
 
+  it('flags an average below the row minimum', () => {
+    const r = planFromLogs([log(10, 17, 20), log(4, 11, 21)], v1());
+    if (!r.ok) throw new Error('expected a plan');
+    expect(r.exteriorBelowMinimum).toBe(true);
+    expect(r.interiorBelowMinimum).toBe(true);
+    const ok = planFromLogs([log(10, 29, 20), log(4, 15, 21)], v1());
+    if (!ok.ok) throw new Error('expected a plan');
+    expect(ok.exteriorBelowMinimum).toBe(false);
+    expect(ok.interiorBelowMinimum).toBe(false);
+  });
+
+  it('reports the lowest allowed height it used', () => {
+    const plan = { ...v1(), wall: { ...v1().wall, toleranceBelowIn: 3 } };
+    const r = planFromLogs([log(10, 36.13, 20), log(4, 15, 21)], plan);
+    if (!r.ok) throw new Error('expected a plan');
+    expect(r.exteriorLowestIn).toBe(81);
+  });
+
   it('ignores deleted logs', () => {
     expect(planFromLogs([log(10, 29, 20), log(4, 15, 21, { deleted: true })], v1()).ok).toBe(false);
   });
