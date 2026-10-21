@@ -173,3 +173,21 @@ input, select, textarea {
 .archived summary { list-style: none; display: block; text-align: center; margin-bottom: var(--s4); }
 .archived summary::-webkit-details-marker { display: none; }
 .plan-name { font-size: 18px; }
+
+/* Android draws the app under the status bar and navigation bar (edge to edge). Capacitor passes their
+   sizes as env(safe-area-inset-*) and as --safe-area-inset-* variables; keep everything clear of them,
+   and paint the bar areas with the page colour so content never scrolls visibly under them. */
+:root {
+  --inset-top: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
+  --inset-bottom: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
+  --inset-left: max(env(safe-area-inset-left, 0px), var(--safe-area-inset-left, 0px));
+  --inset-right: max(env(safe-area-inset-right, 0px), var(--safe-area-inset-right, 0px));
+}
+body { padding: var(--inset-top) var(--inset-right) var(--inset-bottom) var(--inset-left); }
+body::before, body::after { content: ''; position: fixed; left: 0; right: 0; background: var(--base); z-index: 40; pointer-events: none; }
+body::before { top: 0; height: var(--inset-top); }
+body::after { bottom: 0; height: var(--inset-bottom); }
+.toast { bottom: calc(var(--s4) + var(--inset-bottom)); left: calc(var(--s4) + var(--inset-left)); right: calc(var(--s4) + var(--inset-right)); }
+.sheet-backdrop { padding-top: var(--inset-top); }
+.sheet { padding-bottom: calc(var(--s4) + var(--inset-bottom)); max-height: calc(90vh - var(--inset-top)); }
+.save-error { top: var(--inset-top); }
