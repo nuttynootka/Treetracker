@@ -56,7 +56,20 @@ jobs:
           name: TreeTracker-1.0.${{ github.run_number }}
           path: TreeTracker-1.0.${{ github.run_number }}.apk
 
+      # A late or re-run build of an older commit must never replace a newer release.
+      - name: Check this is the newest commit on the branch
+        id: newest
+        run: |
+          git fetch --quiet origin "${GITHUB_REF_NAME}"
+          if [ "$(git rev-parse FETCH_HEAD)" = "${GITHUB_SHA}" ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Not publishing: ${GITHUB_SHA} is no longer the newest commit on ${GITHUB_REF_NAME}."
+          fi
+
       - name: Publish as the "latest" release
+        if: steps.newest.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
